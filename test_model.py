@@ -1,13 +1,9 @@
 from models import DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor
 import torch
-import os
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
-import matplotlib.pyplot as plt
 import numpy as np
 import genesis as gs # type: ignore
-from data import ImageRotationDataset, create_dataloader, show_images
-from utils.rotation import rotation_matrix_xyz, rotate_entity
+from data import ImageRotationDataset, show_images
+from utils.rotation import rotate_entity
 
 def gs_simul_setup(entity_name):
     ########################## init ##########################
@@ -63,7 +59,7 @@ def gs_simul_setup(entity_name):
     torus_fem_1 = scene.add_entity(
         morph=gs.morphs.Mesh(
             file=f'assets/{entity_name}.obj',
-            pos=(0.5, 4, 0.3),
+            pos=(8, 8, 0.3),
             scale=0.2,
             ),
         material=gs.materials.FEM.Muscle(
@@ -74,14 +70,24 @@ def gs_simul_setup(entity_name):
         ),
     )
 
+    if entity == "dragon":
 
-    cam = scene.add_camera(
-        res    = (640, 480),
-        pos    = (2., 0.4, 0.3), # (3,,) per torus is enough
-        lookat = (0.5, 0.4, 0.3),
-        fov    = 30,
-        GUI    = False,
-    )
+        cam = scene.add_camera(
+            res    = (640, 480),
+            pos    = (0,-1,90),
+            lookat = (1,1,1),
+            fov    = 30,
+            GUI    = False,
+            far    = 500,
+        )
+    else:
+        cam = scene.add_camera(
+            res    = (640, 480),
+            pos    = (2., 0.4, 0.3), # (3,,) per torus is enough
+            lookat = (0.5, 0.4, 0.3),
+            fov    = 30,
+            GUI    = False,
+        )
 
 
     ########################## build ##########################
@@ -99,7 +105,7 @@ def get_random_image(dataset):
     return image, rotation
 
 def get_predicted_rotation(image, trained_model):
-    image_pt = torch.tensor([image], dtype=torch.float16)
+    image_pt = torch.tensor([image], dtype=torch.float16).to("cuda")
     with torch.no_grad():
         predicted_rotation = trained_model(image_pt)
     return predicted_rotation.squeeze(0)
@@ -134,9 +140,10 @@ if __name__ == "__main__":
 
         # Model setup
         trained_model = model_class(device)
-        trained_model.load_state_dict(torch.load(f"trained/model_{dino}_{epochs}_{dataset}.pth"))
+        trained_model.to(device)
+        trained_model.load_state_dict(torch.load(f"trained_models/model_{dino}_{epochs}_{dataset}.pth"))
 
-        dataset = ImageRotationDataset("datasets"+dataset)
+        dataset = ImageRotationDataset("datasets/"+dataset)
 
         # Simul setup
         scene, cam = gs_simul_setup(entity_name=entity)
@@ -147,10 +154,11 @@ if __name__ == "__main__":
 
 
         while True:
-            image, rotation = get_random_image()
+            image, rotation = get_random_image(dataset)
             pred_rotation = get_predicted_rotation(image,trained_model)
 
-            print(rotation, pred_rotation)
+            print("rotation ", rotation,"predicted rotation ", pred_rotation)
+            rotation = rotation.squeeze(0)
 
             scene.reset()
             rotate_entity(torus_fem_0,rotation[0], rotation[1], rotation[2])
@@ -161,7 +169,6 @@ if __name__ == "__main__":
     if feature_analysis:
         def feature_extraction_analysis(image1, image2):
 
-            device = "cuda"
             model = DeformNet_v3(device)
             inputs = model.processor(images=torch.tensor([image1,image2], dtype=torch.float16), return_tensors="pt", do_rescale=False).to(device)
             outputs = model.dino(**inputs)
@@ -173,7 +180,7 @@ if __name__ == "__main__":
         
         print(f"showing pairs of images and image features extracted from dino {dino}")
 
-        dataset = ImageRotationDataset(dataset)
+        dataset = ImageRotationDataset("datasets/"+dataset)
 
         while True:
 
