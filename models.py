@@ -39,7 +39,6 @@ class DeformNet_v2(nn.Module):
         x = torch.relu(self.fc1(x))
         x = self.fc2(x)
         return x
-    
 
 class DeformNet_v3(nn.Module):
     def __init__(self, device):
@@ -69,7 +68,6 @@ class DeformNet_v3(nn.Module):
         x = self.fc2(x)
         return x
     
-
 class DeformNet_v3_extractor(nn.Module):
     def __init__(self, device):
         super(DeformNet_v3_extractor, self).__init__()

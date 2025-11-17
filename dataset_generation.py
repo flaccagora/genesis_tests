@@ -1,6 +1,7 @@
 import numpy as np
 import genesis as gs
 import torch
+from utils.rotation import rotate_entity
 
 def gs_simul_setup(entity):
     ########################## init ##########################
@@ -81,43 +82,6 @@ def gs_simul_setup(entity):
 
     return scene, cam
 
-def rotation_matrix_xyz(rx, ry, rz):
-    Rx = torch.tensor([[1, 0, 0],
-                   [0, torch.cos(rx), -torch.sin(rx)],
-                   [0, torch.sin(rx), torch.cos(rx)]], dtype=torch.float32)
-    
-    Ry = torch.tensor([[torch.cos(ry), 0, torch.sin(ry)],
-                   [0, 1, 0],
-                   [-torch.sin(ry), 0, torch.cos(ry)]], dtype=torch.float32)
-    
-    Rz = torch.tensor([[torch.cos(rz), -torch.sin(rz), 0],
-                   [torch.sin(rz), torch.cos(rz), 0],
-                   [0, 0, 1]], dtype=torch.float32)
-    
-    R = Rz @ Ry @ Rx
-    return R
-
-def rotate_entity(entity, rx, ry=None, rz=None, center=None):
-    if ry == None or rz == None:
-        R = rx
-    else:
-        R = rotation_matrix_xyz(rx, ry, rz)
-    state = entity.get_state()
-    pos = state.pos
-    if center is not None:
-        com = center
-    else:   
-        com = pos.mean(dim=1)
-    pos_centered = pos - com
-    pos_rotated = pos_centered @ R.T + com
-    entity.set_position(pos_rotated.sceneless())
-
-
-"""REMEMBER TO ALWAYS ROTATE FROM A REFERENCE FRAME POSITION
-OTHERWISE THE ROTATION WILL ACCUMULATE ERRORS"""
-
-
-
 if __name__ == "__main__":
     from tqdm import tqdm
     import os
@@ -128,7 +92,7 @@ if __name__ == "__main__":
     entity_name = "Torus"
     # -----------------------------------------------------------------------------
     config_keys = [k for k,v in globals().items() if not k.startswith('_') and isinstance(v, (int, float, bool, str))]
-    exec(open('configurator.py').read()) # overrides from command line or config file
+    exec(open('utils/configurator.py').read()) # overrides from command line or config file
     config = {k: globals()[k] for k in config_keys} # will be useful for logging
     # -----------------------------------------------------------------------------
 
