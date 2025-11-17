@@ -1,5 +1,5 @@
 import numpy as np
-import genesis as gs
+import genesis as gs # type: ignore
 import torch
 from utils.rotation import rotate_entity
 
