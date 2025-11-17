@@ -33,8 +33,11 @@ def gs_simul_setup(entity):
     )
 
     ########################## entities ##########################
-    scene.add_entity(morph=gs.morphs.Plane())
-
+    pos=(0.5, 1, 0.3)
+    if entity != "dragon":
+        scene.add_entity(morph=gs.morphs.Plane())
+        pos = (0.5,0.4,0.3)
+   
     E, nu = 3.e4, 0.45
     rho = 1000.
 
@@ -42,7 +45,7 @@ def gs_simul_setup(entity):
     entity = scene.add_entity(
         morph=gs.morphs.Mesh(
             file=f'assets/{entity}.obj',
-            pos=(0.5, 0.4, 0.3),
+            pos=pos,
             scale=0.2,
             ),
         material=gs.materials.FEM.Muscle(
@@ -67,14 +70,25 @@ def gs_simul_setup(entity):
     #     ),
     # )
 
+    if entity == "dragon":
 
-    cam = scene.add_camera(
-        res    = (640, 480),
-        pos    = (3., 0.4, 0.3),
-        lookat = (0.5, 0.4, 0.3),
-        fov    = 30,
-        GUI    = False,
-    )
+        cam = scene.add_camera(
+            res    = (640, 480),
+            pos    = (0,-1,90),
+            lookat = (1,1,1),
+            fov    = 30,
+            GUI    = False,
+            far    = 500,
+        )
+    else:
+        cam = scene.add_camera(
+            res    = (640, 480),
+            pos    = (3., 0.4, 0.3), # (3,,) per torus is enough
+            fov    = 30,
+            GUI    = False,
+        )
+
+
 
 
     ########################## build ##########################
@@ -99,23 +113,27 @@ if __name__ == "__main__":
     os.makedirs(f"datasets/{dataset_name}_{entity_name}_{n}",exist_ok=True)
 
     scene, cam = gs_simul_setup(entity_name)
-    scene_entity = scene.entities[1]
+    i = 0
+    if entity_name == "dragon":
+        i = -1
+    scene_entity = scene.entities[1+i]
 
     progress_bar = tqdm(n**3)
     for f1 in range(n):
         for f2 in range(n):
             for f3 in range(n):
-                angle = torch.tensor([torch.pi * f1 / n, torch.pi * f2 / n, torch.pi * f3 / n])
+                # angle = torch.tensor([torch.pi * f1 / n, torch.pi * f2 / n, torch.pi * f3 / n])
+                angle = torch.rand((1,3)) * torch.pi
                 scene.reset()
-                rotate_entity(scene_entity, angle[0], angle[1], angle[2], center=None)
+                rotate_entity(scene_entity, angle, center=None)
                 scene.step()
+                
                 # save image and rotation matrix
                 img = np.array(cam.render()[0])
                 # R = rotation_matrix_xyz(angle[0], angle[1], angle[2])
-                R = torch.tensor([angle[0], angle[1], angle[2]])
+                # R = torch.tensor([angle[0], angle[1], angle[2]])
+                
                 # save img and R to disk
-                img_filename = f"datasets/{dataset_name}_{entity_name}_{n}/image_f1_{f1}_f2_{f2}_f3_{f3}_n_{n}.npy"
-                R_filename = f"datasets/{dataset_name}_{entity_name}_{n}/rotation_f1_{f1}_f2_{f2}_f3_{f3}_n_{n}.th"
-                np.save(img_filename, img)
-                torch.save(R, R_filename)
+                np.save(f"datasets/{dataset_name}_{entity_name}_{n}/image_f1_{f1}_f2_{f2}_f3_{f3}_n_{n}.npy", img)
+                torch.save(angle, f"datasets/{dataset_name}_{entity_name}_{n}/rotation_f1_{f1}_f2_{f2}_f3_{f3}_n_{n}.th")
             progress_bar.update(n)

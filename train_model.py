@@ -3,11 +3,11 @@ import torch
 import torch.nn as nn
 from data import create_dataloader
 
-def train(epochs, bs, dino="v3", pretrained_model=None, compile=False):
+def train(epochs, bs, data_dir, out_dir, dino="v3", pretrained_model=None, compile=False):
     from tqdm import tqdm
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("USING DEVICE ", device)
-    dataloader = create_dataloader('dataset', batch_size=bs)
+    dataloader = create_dataloader("datasets/"+data_dir, batch_size=bs)
     
     if dino == "v3":
         model = DeformNet_v3
@@ -42,7 +42,7 @@ def train(epochs, bs, dino="v3", pretrained_model=None, compile=False):
         for images, rotation_matrices in epoch_bar:
             optimizer.zero_grad()
             outputs = deformnet(images.to(device))
-            loss = criterion(outputs, rotation_matrices.to(device))
+            loss = criterion(outputs, rotation_matrices.to(device).squeeze(1))
             loss.backward()
             optimizer.step()
 
@@ -51,11 +51,12 @@ def train(epochs, bs, dino="v3", pretrained_model=None, compile=False):
 
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}")
         if (epoch+1) % 5 == 0:
-            torch.save(deformnet.state_dict(), f"trained_{dino}_{epoch+1}_8k.pth")
+            torch.save(deformnet.state_dict(), f"{out_dir}/model_{dino}_{epoch+1}_{data_dir}.pth")
 
     return deformnet
 
 if __name__ == "__main__":
+    import os
 
     # -----------------------------------------------------------------------------
     # I/O
@@ -87,11 +88,12 @@ if __name__ == "__main__":
     trained_model = None
     if not init_from == "scratch":
         trained_model = model(device)
-        trained_model.load_state_dict(torch.load(f"trained_{dino}_{epochs}_8k.pth"))
+        trained_model.load_state_dict(torch.load(f"trained_models/model_{dino}_{epochs}_{dataset}.pth"))
 
+    os.makedirs(out_dir, exist_ok=True)
 
-    trained_model = train(epochs=epochs, bs=batch_size, pretrained_model=trained_model, compile=False)
-    torch.save(trained_model.state_dict(), f"trained_{dino}_{epochs}_8k.pth")
+    trained_model = train(epochs=epochs, bs=batch_size,data_dir=dataset,out_dir=out_dir, pretrained_model=trained_model, compile=compile)
+    torch.save(trained_model.state_dict(), f"trained_models/model_{dino}_{epochs}_{dataset}.pth")
    
 
 

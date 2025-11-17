@@ -1,6 +1,5 @@
-import torch
-
 # -----------------------------------------------------------------------------
-entity_name = "dragon" # object in assets folder 
+entity_name = "Torus" # object in assets folder 
 dataset_name = 'data'
 n = 20
+# -----------------------------------------------------------------------------
