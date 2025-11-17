@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import genesis as gs # type: ignore
 from data import ImageRotationDataset, create_dataloader, show_images
+from utils.rotation import rotation_matrix_xyz, rotate_entity
 
-def gs_simul_setup():
+def gs_simul_setup(entity_name):
     ########################## init ##########################
     gs.init(seed=0, precision='32', logging_level='info')
 
@@ -38,7 +39,8 @@ def gs_simul_setup():
     )
 
     ########################## entities ##########################
-    scene.add_entity(morph=gs.morphs.Plane())
+    if entity_name != "dragon":
+        scene.add_entity(morph=gs.morphs.Plane())
 
     E, nu = 3.e4, 0.45
     rho = 1000.
@@ -46,7 +48,7 @@ def gs_simul_setup():
 
     torus_fem_0 = scene.add_entity(
         morph=gs.morphs.Mesh(
-            file='assets/Torus.obj',
+            file=f'assets/{entity_name}.obj',
             pos=(0.5, 0.4, 0.3),
             scale=0.2,
             ),
@@ -60,8 +62,8 @@ def gs_simul_setup():
 
     torus_fem_1 = scene.add_entity(
         morph=gs.morphs.Mesh(
-            file='assets/Torus.obj',
-            pos=(0.5, 0.8, 0.3),
+            file=f'assets/{entity_name}.obj',
+            pos=(0.5, 4, 0.3),
             scale=0.2,
             ),
         material=gs.materials.FEM.Muscle(
@@ -75,7 +77,7 @@ def gs_simul_setup():
 
     cam = scene.add_camera(
         res    = (640, 480),
-        pos    = (3., 0.4, 0.3),
+        pos    = (2., 0.4, 0.3), # (3,,) per torus is enough
         lookat = (0.5, 0.4, 0.3),
         fov    = 30,
         GUI    = False,
@@ -102,39 +104,6 @@ def get_predicted_rotation(image, trained_model):
         predicted_rotation = trained_model(image_pt)
     return predicted_rotation.squeeze(0)
 
-def rotation_matrix_xyz(rx, ry, rz):
-    Rx = torch.tensor([[1, 0, 0],
-                   [0, torch.cos(rx), -torch.sin(rx)],
-                   [0, torch.sin(rx), torch.cos(rx)]], dtype=torch.float32)
-    
-    Ry = torch.tensor([[torch.cos(ry), 0, torch.sin(ry)],
-                   [0, 1, 0],
-                   [-torch.sin(ry), 0, torch.cos(ry)]], dtype=torch.float32)
-    
-    Rz = torch.tensor([[torch.cos(rz), -torch.sin(rz), 0],
-                   [torch.sin(rz), torch.cos(rz), 0],
-                   [0, 0, 1]], dtype=torch.float32)
-    
-    R = Rz @ Ry @ Rx
-    return R
-
-def rotate_entity(entity, rx, ry=None, rz=None, center=None):
-    if ry == None or rz == None:
-        R = rx
-    else:
-        R = rotation_matrix_xyz(rx, ry, rz)
-    state = entity.get_state()
-    pos = state.pos
-    if center is not None:
-        com = center
-    else:   
-        com = pos.mean(dim=1)
-    
-    pos_centered = pos - com
-    pos_rotated = pos_centered @ R.T + com
-    entity.set_position(pos_rotated.sceneless())
-
-
 """REMEMBER TO ALWAYS ROTATE FROM A REFERENCE FRAME POSITION
 OTHERWISE THE ROTATION WILL ACCUMULATE ERRORS"""
 
@@ -150,6 +119,8 @@ if __name__ == "__main__":
     epochs = 10
     model_class = DeformNet_v3 # DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # simul
+    entity = "Torus"
     # -----------------------------------------------------------------------------
     config_keys = [k for k,v in globals().items() if not k.startswith('_') and isinstance(v, (int, float, bool, str))]
     exec(open('utils/configurator.py').read()) # overrides from command line or config file
@@ -160,17 +131,19 @@ if __name__ == "__main__":
     assert feature_analysis or parallel_show, "choose one among feature_analysis or parallel_show"
 
     if parallel_show:
-        scene, cam = gs_simul_setup()
-        torus_fem_0 = scene.entities[1]
-        torus_fem_1 = scene.entities[2]
 
-        print("USING DEVICE ", device)
-
-
+        # Model setup
         trained_model = model_class(device)
-        trained_model.load_state_dict(torch.load(f"trained/trained_{dino}_{epochs}_8k.pth"))
+        trained_model.load_state_dict(torch.load(f"trained/model_{dino}_{epochs}_{dataset}.pth"))
 
-        dataset = ImageRotationDataset(dataset)
+        dataset = ImageRotationDataset("datasets"+dataset)
+
+        # Simul setup
+        scene, cam = gs_simul_setup(entity_name=entity)
+        if entity == "dragon":
+            i = -1
+        torus_fem_0 = scene.entities[1+i]
+        torus_fem_1 = scene.entities[2+i]
 
 
         while True:
