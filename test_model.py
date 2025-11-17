@@ -35,8 +35,10 @@ def gs_simul_setup(entity_name):
     )
 
     ########################## entities ##########################
-    if entity_name != "dragon":
+    pos=(0.5, 1, 0.3)
+    if entity != "dragon":
         scene.add_entity(morph=gs.morphs.Plane())
+        pos = (0.5,0.4,0.3)
 
     E, nu = 3.e4, 0.45
     rho = 1000.
@@ -45,7 +47,7 @@ def gs_simul_setup(entity_name):
     torus_fem_0 = scene.add_entity(
         morph=gs.morphs.Mesh(
             file=f'assets/{entity_name}.obj',
-            pos=(0.5, 0.4, 0.3),
+            pos=pos,
             scale=0.2,
             ),
         material=gs.materials.FEM.Muscle(
@@ -59,7 +61,7 @@ def gs_simul_setup(entity_name):
     torus_fem_1 = scene.add_entity(
         morph=gs.morphs.Mesh(
             file=f'assets/{entity_name}.obj',
-            pos=(8, 8, 0.3),
+            pos=pos,
             scale=0.2,
             ),
         material=gs.materials.FEM.Muscle(
@@ -83,8 +85,7 @@ def gs_simul_setup(entity_name):
     else:
         cam = scene.add_camera(
             res    = (640, 480),
-            pos    = (2., 0.4, 0.3), # (3,,) per torus is enough
-            lookat = (0.5, 0.4, 0.3),
+            pos    = (3., 0.4, 0.3), # (3,,) per torus is enough
             fov    = 30,
             GUI    = False,
         )
@@ -147,6 +148,7 @@ if __name__ == "__main__":
 
         # Simul setup
         scene, cam = gs_simul_setup(entity_name=entity)
+        i = 0
         if entity == "dragon":
             i = -1
         torus_fem_0 = scene.entities[1+i]
