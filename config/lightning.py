@@ -5,12 +5,12 @@ Usage:
 """
 
 # Data -------------------------------------------------------------------------
-train_dir = "datasets/data_Torus_5"
+train_dir = "datasets/data_lungs_20"
 val_dir = None
 test_dir = None
-batch_size = 64
-num_workers = 1
-img_size = 224
+batch_size = 128
+num_workers = 5
+img_size = None # if set images are cropped to square of l img_size
 shuffle = True
 
 # Model ------------------------------------------------------------------------
@@ -35,7 +35,7 @@ resume_from = None # "lightning_logs/genesis-tests/184pqxxj/checkpoints/last.ckp
 learning_rate = 5e-4
 use_lr_scheduler = True
 scheduler_type = "cosine"  # Options: "cosine", "linear", "exponential", "step"
-warmup_epochs = 2
+warmup_epochs = 1
 warmup_start_lr = 1e-6
 cosine_final_lr = 1e-6  # For cosine scheduler
 step_size = 10  # For step scheduler (reduce LR every N epochs)
