@@ -122,6 +122,7 @@ if __name__ == "__main__":
     parallel_show = False
     feature_analysis = True
     # model
+    models_dir = "trained_models"
     dino = "v3"
     epochs = 10
     model_class = DeformNet_v3 # DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor
@@ -142,7 +143,7 @@ if __name__ == "__main__":
         # Model setup
         trained_model = model_class(device)
         trained_model.to(device)
-        trained_model.load_state_dict(torch.load(f"trained_models/model_{dino}_{epochs}_{dataset}.pth"))
+        trained_model.load_state_dict(torch.load(f"{models_dir}/model_{dino}_{epochs}_{dataset}.pth"))
 
         dataset = ImageRotationDataset("datasets/"+dataset)
 

@@ -3,22 +3,14 @@ import torch
 import torch.nn as nn
 from data import create_dataloader
 
-def train(epochs, bs, data_dir, out_dir, dino="v3", pretrained_model=None, compile=False):
+def train(epochs, bs, model_cls,data_dir, out_dir, dino="v3", pretrained_model=None, compile=False):
     from tqdm import tqdm
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print("USING DEVICE ", device)
+    
     dataloader = create_dataloader("datasets/"+data_dir, batch_size=bs)
     
-    if dino == "v3":
-        model = DeformNet_v3
-    elif dino == "v2":
-        model = DeformNet_v2
-    else:
-        raise ValueError
-
-
     if pretrained_model==None:
-        deformnet = model(device=device)
+        deformnet = model_cls(device=device)
     else:
         deformnet = pretrained_model
     deformnet.to(device)
@@ -57,7 +49,6 @@ def train(epochs, bs, data_dir, out_dir, dino="v3", pretrained_model=None, compi
 
 if __name__ == "__main__":
     import os
-
     # -----------------------------------------------------------------------------
     # I/O
     out_dir = 'out'
@@ -67,6 +58,7 @@ if __name__ == "__main__":
     batch_size = 128
     # model
     dino="v3"
+    model_cls = DeformNet_v3
     # data
     dataset = 'openwebtext'
     device = 'cuda' # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1' etc., or try 'mps' on macbooks
@@ -77,22 +69,21 @@ if __name__ == "__main__":
     exec(open('utils/configurator.py').read()) # overrides from command line or config file
     config = {k: globals()[k] for k in config_keys} # will be useful for logging
     # -----------------------------------------------------------------------------
-
-    if dino == "v3":
-        model = DeformNet_v3
-    elif dino == "v2":
-        model = DeformNet_v2
-    else:
-        raise ValueError
+   
+    assert (dino == "v3" and (model_cls == DeformNet_v3_extractor or model_cls == DeformNet_v3)) or (dino == "v2" and model_cls == DeformNet_v2), f"model class {model_cls} incompatible with dino {dino}"
 
     trained_model = None
     if not init_from == "scratch":
-        trained_model = model(device)
+        trained_model = model_cls(device)
         trained_model.load_state_dict(torch.load(f"trained_models/model_{dino}_{epochs}_{dataset}.pth"))
 
     os.makedirs(out_dir, exist_ok=True)
+    # a = torch.tensor([1])
+    # print("saving to ", f"{out_dir}/model_{dino}_{epochs}_{dataset}.test")
+    # torch.save(a, f"{out_dir}/model_{dino}_{epochs}_{dataset}.test")
+    # a = input()
 
-    trained_model = train(epochs=epochs, bs=batch_size,data_dir=dataset,out_dir=out_dir, pretrained_model=trained_model, compile=compile)
+    trained_model = train(epochs=epochs, bs=batch_size,model_cls=model_cls,data_dir=dataset,out_dir=out_dir, pretrained_model=trained_model, compile=compile)
     torch.save(trained_model.state_dict(), f"trained_models/model_{dino}_{epochs}_{dataset}.pth")
    
 

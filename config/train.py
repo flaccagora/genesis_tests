@@ -1,14 +1,16 @@
 import torch
+from models import DeformNet_v3_extractor
 # -----------------------------------------------------------------------------
 # default config values designed to train a gpt2 (124M) on OpenWebText
 # I/O
-out_dir = 'trained_models'
-init_from = 'resume' # 'scratch' or 'not init_from == "scratch"'
+out_dir = 'trained_models/cnn'
+init_from = 'scratch' # 'scratch' or 'not init_from == "scratch"'
 # train
-epochs = 10
+epochs = 20
 batch_size = 256
 # model
 dino="v3"
+model_cls = DeformNet_v3_extractor
 # data
 dataset = 'data_Torus_20'
 device = 'cuda' # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1' etc., or try 'mps' on macbooks
