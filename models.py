@@ -18,7 +18,13 @@ class DeformNet_v2(nn.Module):
         self.dino = AutoModel.from_pretrained('facebook/dinov2-base')
         for param in self.dino.parameters():
             param.requires_grad = False  # Freeze the feature extractor
-        self.dinov2.to(device)
+        self.dino.to(device)
+
+    def _resolve_device(self):
+        param = next(self.parameters(), None)
+        if param is not None:
+            return param.device
+        return torch.device(self.device)
 
     def set_feature_extractor_v3(self, device):
 
@@ -32,7 +38,8 @@ class DeformNet_v2(nn.Module):
             param.requires_grad = False  # Freeze the feature extractor
         
     def forward(self, x):
-        inputs = self.processor(images=x, return_tensors="pt", do_rescale=False).to(self.device)
+        runtime_device = self._resolve_device()
+        inputs = self.processor(images=x, return_tensors="pt", do_rescale=False).to(runtime_device)
         outputs = self.dino(**inputs)
         x = outputs.last_hidden_state  # (batch_size, seq_len, feature_dim)
         x = torch.mean(x, dim=1)  # Global average pooling
@@ -48,6 +55,12 @@ class DeformNet_v3(nn.Module):
         self.fc1 = nn.Linear(768, 512)
         self.fc2 = nn.Linear(512, 3)  # Output 1x3 rotation array of angles
 
+    def _resolve_device(self):
+        param = next(self.parameters(), None)
+        if param is not None:
+            return param.device
+        return torch.device(self.device)
+
     def set_feature_extractor_v3(self, device):
 
         pretrained_model_name = "facebook/dinov3-vitB16-pretrain-lvd1689m"
@@ -60,7 +73,8 @@ class DeformNet_v3(nn.Module):
             param.requires_grad = False  # Freeze the feature extractor
         
     def forward(self, x):
-        inputs = self.processor(images=x, return_tensors="pt", do_rescale=False).to(self.device)
+        runtime_device = self._resolve_device()
+        inputs = self.processor(images=x, return_tensors="pt", do_rescale=False).to(runtime_device)
         outputs = self.dino(**inputs)
         x = outputs.last_hidden_state  # (batch_size, seq_len, feature_dim)
         x = torch.mean(x, dim=1)  # Global average pooling
@@ -110,6 +124,12 @@ class DeformNet_v3_extractor(nn.Module):
             nn.ReLU(),
             nn.Linear(128, 3)  # final output
         )
+    def _resolve_device(self):
+        param = next(self.parameters(), None)
+        if param is not None:
+            return param.device
+        return torch.device(self.device)
+
     def set_feature_extractor_v3(self, device):
        
         pretrained_model_name = "facebook/dinov3-vitB16-pretrain-lvd1689m"
@@ -124,7 +144,8 @@ class DeformNet_v3_extractor(nn.Module):
         
         
     def forward(self, x):
-        inputs = self.processor(images=x, return_tensors="pt", do_rescale=False).to(self.device)
+        runtime_device = self._resolve_device()
+        inputs = self.processor(images=x, return_tensors="pt", do_rescale=False).to(runtime_device)
         x = self.dino(**inputs).last_hidden_state.unsqueeze(1)
         # print("EXPECTED 24 201 768 ",x.shape)
         x = self.cnn(x)
