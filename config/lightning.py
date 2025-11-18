@@ -15,7 +15,6 @@ shuffle = True
 
 # Model ------------------------------------------------------------------------
 model_variant = "v3"
-learning_rate = 5e-4
 compile_model = True
 pretrained_path = None
 
@@ -31,6 +30,16 @@ limit_val_batches = 1.0
 limit_test_batches = 1.0
 checkpoint_name = "deformnet-{epoch:02d}-{val_loss:.4f}"
 resume_from = None # "lightning_logs/genesis-tests/184pqxxj/checkpoints/last.ckpt"
+
+# LR ---------------------------------------------------------------------------
+learning_rate = 5e-4
+use_lr_scheduler = True
+scheduler_type = "cosine"  # Options: "cosine", "linear", "exponential", "step"
+warmup_epochs = 2
+warmup_start_lr = 1e-6
+cosine_final_lr = 1e-6  # For cosine scheduler
+step_size = 10  # For step scheduler (reduce LR every N epochs)
+gamma = 0.1  # For step/exponential scheduler (multiply LR by gamma)
 
 # Logging ----------------------------------------------------------------------
 use_wandb = True

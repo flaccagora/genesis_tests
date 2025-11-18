@@ -12,7 +12,11 @@ How to use
 
    ./scripts/train_nohup.sh --dry-run
 
-3. Launch jobs (optionally limit GPUs):
+3. To run jobs sequentially (wait for each to finish before launching the next):
+
+   CUDA_VISIBLE_DEVICES=0 ./scripts/train_nohup.sh --sequential
+
+4. Launch jobs in parallel (default):
 
    CUDA_VISIBLE_DEVICES=0 ./scripts/train_nohup.sh
 
@@ -31,4 +35,10 @@ Notes
 - The script assumes the project root uses `src/` as the Python package root. It calls
   training with `env PYTHONPATH=src python -m train.train config/lightning.py` and forwards
   simple `--key=value` overrides to the project's configurator.
-- The script uses `nohup` so jobs survive the terminal session; check logs for progress.
+-- The script uses `nohup` so jobs survive the terminal session; check logs for progress.
+
+Sequential mode notes
+
+- When `--sequential` is used, the script waits for each launched process to exit before
+   starting the next job. If a job exits with a non-zero code, the launcher stops and
+   returns that exit code so you can inspect logs and fix the issue.

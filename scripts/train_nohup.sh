@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Simple launcher to run multiple training jobs in the background with nohup.
-# Places logs under ./logs/ and records PIDs next to each log as .pid files.
+# Simple launcher to run multiple training jobs with nohup.
+# By default jobs are started in the background (parallel). Pass --sequential to
+# make the script wait for each job to finish before starting the next.
 
 set -euo pipefail
 
@@ -21,19 +22,21 @@ DATA_DIR="datasets/data_Torus_5"
 
 usage() {
   cat <<-USAGE
-Usage: $(basename "$0") [--dry-run]
+Usage: $(basename "$0") [--dry-run] [--sequential]
 
-This script launches a small grid of training jobs using nohup and backgrounds them.
-Logs are written to ./logs/ (project-root).
+This script launches a small grid of training jobs using nohup.
+By default jobs are started in the background (parallel). Use --sequential to wait
+for each job to finish before starting the next.
 
 Environment:
   Export PYTHONPATH=src is handled by the script when launching commands.
 
 Options:
-  --dry-run   Print the commands that would be executed without launching them.
+  --dry-run     Print the commands that would be executed without launching them.
+  --sequential  Run jobs one at a time: wait for each job to finish before launching the next.
 
 To limit GPUs, prefix invocation with e.g.:
-  CUDA_VISIBLE_DEVICES=0 $(basename "$0")
+  CUDA_VISIBLE_DEVICES=0 $(basename "$0") --sequential
 
 Edit the BATCH_SIZES, LRS, CONFIG and DATA_DIR variables near the top of this file to
 customise the grid of experiments.
@@ -41,9 +44,28 @@ USAGE
 }
 
 DRY_RUN=0
-if [[ ${1:-} == "--dry-run" ]]; then
-  DRY_RUN=1
-fi
+SEQUENTIAL=0
+while [[ ${#} -gt 0 ]]; do
+  case "$1" in
+    --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    --sequential)
+      SEQUENTIAL=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      usage
+      exit 1
+      ;;
+  esac
+done
 
 run_idx=0
 for B in "${BATCH_SIZES[@]}"; do
@@ -66,17 +88,38 @@ for B in "${BATCH_SIZES[@]}"; do
     CMD_STR="${CMD[*]}"
 
     if [[ $DRY_RUN -eq 1 ]]; then
-      echo "[DRY] nohup ${CMD_STR} > $LOG_DIR/$LOGFILE 2>&1 & echo \$! > $PIDFILE"
+      if [[ $SEQUENTIAL -eq 1 ]]; then
+        echo "[DRY] (sequential) nohup ${CMD_STR} > $LOG_DIR/$LOGFILE 2>&1 & echo \$! > $PIDFILE; wait \$(cat $PIDFILE)"
+      else
+        echo "[DRY] nohup ${CMD_STR} > $LOG_DIR/$LOGFILE 2>&1 & echo \$! > $PIDFILE"
+      fi
     else
       echo "Launching job #${run_idx}: batch=${B}, lr=${LR} -> $LOGFILE"
       nohup ${CMD_STR} > "$LOG_DIR/$LOGFILE" 2>&1 &
       pid=$!
       echo $pid > "$PIDFILE"
       echo "  PID=$pid  log=$LOG_DIR/$LOGFILE"
-      # brief sleep so timestamps differ slightly and to avoid hammering scheduler
-      sleep 0.5
+
+      if [[ $SEQUENTIAL -eq 1 ]]; then
+        # Wait for the launched job to finish. If it fails, stop launching further jobs.
+        echo "  Waiting for PID $pid to finish..."
+        wait $pid
+        rc=$?
+        echo "  PID $pid exited with code $rc"
+        if [[ $rc -ne 0 ]]; then
+          echo "Job #${run_idx} failed (exit code $rc). Stopping further jobs."
+          exit $rc
+        fi
+      else
+        # brief sleep so timestamps differ slightly and to avoid hammering scheduler
+        sleep 0.5
+      fi
     fi
   done
 done
 
-echo "Launched $run_idx jobs. Logs: $LOG_DIR"
+if [[ $SEQUENTIAL -eq 1 ]]; then
+  echo "Completed $run_idx sequential jobs. Logs: $LOG_DIR"
+else
+  echo "Launched $run_idx jobs. Logs: $LOG_DIR"
+fi
