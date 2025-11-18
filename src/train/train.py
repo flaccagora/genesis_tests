@@ -90,6 +90,14 @@ def run(config: Dict[str, Any]) -> None:
         lr=config["learning_rate"],
         compile_model=config["compile_model"],
         pretrained_path=config["pretrained_path"],
+        use_lr_scheduler=config["use_lr_scheduler"],
+        scheduler_type=config["scheduler_type"],
+        warmup_epochs=config["warmup_epochs"],
+        warmup_start_lr=config["warmup_start_lr"],
+        cosine_final_lr=config["cosine_final_lr"],
+        step_size=config["step_size"],
+        gamma=config["gamma"],
+        total_epochs=config["max_epochs"],
     )
 
     monitor_val = config["val_dir"] is not None
@@ -128,6 +136,15 @@ if __name__ == "__main__":
     compile_model = False
     pretrained_path: Optional[str] = None
 
+    # Learning Rate Scheduling and Warmup
+    use_lr_scheduler = True
+    scheduler_type = "cosine"  # Options: "cosine", "linear", "exponential", "step"
+    warmup_epochs = 2
+    warmup_start_lr = 1e-6
+    cosine_final_lr = 1e-6  # For cosine scheduler
+    step_size = 10  # For step scheduler (reduce LR every N epochs)
+    gamma = 0.1  # For step/exponential scheduler (multiply LR by gamma)
+
     # Trainer
     max_epochs = 10
     accelerator: Union[str, int] = "auto"
@@ -159,6 +176,8 @@ if __name__ == "__main__":
     ]
     apply_overrides(globals())
     config: Dict[str, Any] = {k: globals()[k] for k in config_keys}
+
+    # assert ((pretrained_path == None) and (resume_from == None)) or ((not(pretrained_path == None)) and (not(resume_from == None))), "pretrained_path and resume_from arguments must be both not none to work "
 
     run(config)
 

@@ -6,6 +6,13 @@ from typing import Dict, Optional, Type
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
+from torch.optim.lr_scheduler import (
+    CosineAnnealingLR,
+    ExponentialLR,
+    LinearLR,
+    StepLR,
+    SequentialLR,
+)
 
 from models import DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor
 
@@ -30,6 +37,14 @@ class DeformNetLightningModule(pl.LightningModule):
         lr: float = 1e-3,
         compile_model: bool = False,
         pretrained_path: Optional[str] = None,
+        use_lr_scheduler: bool = True,
+        scheduler_type: str = "cosine",
+        warmup_epochs: int = 2,
+        warmup_start_lr: float = 1e-6,
+        cosine_final_lr: float = 1e-6,
+        step_size: int = 10,
+        gamma: float = 0.1,
+        total_epochs: int = 10,
     ) -> None:
         super().__init__()
 
@@ -49,6 +64,16 @@ class DeformNetLightningModule(pl.LightningModule):
 
         self.criterion = nn.MSELoss()
         self.lr = lr
+
+        # Learning rate scheduler parameters
+        self.use_lr_scheduler = use_lr_scheduler
+        self.scheduler_type = scheduler_type
+        self.warmup_epochs = warmup_epochs
+        self.warmup_start_lr = warmup_start_lr
+        self.cosine_final_lr = cosine_final_lr
+        self.step_size = step_size
+        self.gamma = gamma
+        self.total_epochs = total_epochs
 
     def forward(self, images: torch.Tensor) -> torch.Tensor:
         return self.model(images)
@@ -76,7 +101,65 @@ class DeformNetLightningModule(pl.LightningModule):
         self._common_step(batch, batch_idx, "test")
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        
+        if not self.use_lr_scheduler:
+            return optimizer
+        
+        # Create warmup scheduler if warmup_epochs > 0
+        schedulers = []
+        total_steps = self.total_epochs
+        
+        if self.warmup_epochs > 0:
+            warmup_scheduler = LinearLR(
+                optimizer,
+                start_factor=self.warmup_start_lr / self.lr,
+                total_iters=self.warmup_epochs,
+            )
+            schedulers.append(warmup_scheduler)
+        
+        # Create main scheduler based on type
+        main_epochs = self.total_epochs - self.warmup_epochs
+        
+        if self.scheduler_type == "cosine":
+            main_scheduler = CosineAnnealingLR(
+                optimizer,
+                T_max=main_epochs,
+                eta_min=self.cosine_final_lr,
+            )
+        elif self.scheduler_type == "linear":
+            main_scheduler = LinearLR(
+                optimizer,
+                start_factor=1.0,
+                total_iters=main_epochs,
+            )
+        elif self.scheduler_type == "exponential":
+            main_scheduler = ExponentialLR(optimizer, gamma=self.gamma)
+        elif self.scheduler_type == "step":
+            main_scheduler = StepLR(optimizer, step_size=self.step_size, gamma=self.gamma)
+        else:
+            raise ValueError(f"Unknown scheduler_type: {self.scheduler_type}")
+        
+        schedulers.append(main_scheduler)
+        
+        # Use SequentialLR if we have warmup, otherwise just the main scheduler
+        if self.warmup_epochs > 0:
+            scheduler = SequentialLR(
+                optimizer,
+                schedulers=schedulers,
+                milestones=[self.warmup_epochs],
+            )
+        else:
+            scheduler = main_scheduler
+        
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {
+                "scheduler": scheduler,
+                "interval": "epoch",
+                "frequency": 1,
+            },
+        }
 
     def on_fit_start(self) -> None:
         # Keep the wrapped model in sync with Lightning's device placement logic.
