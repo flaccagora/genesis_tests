@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import sys
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import pytorch_lightning as pl
@@ -11,11 +9,8 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import Logger as PLLogger
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from lit_system import DeformNetLightningModule, RotationDataModule
+from train import DeformNetLightningModule, RotationDataModule
+from utils.configurator import apply_overrides
 
 
 LoggerReturn = Union[PLLogger, List[PLLogger], bool]
@@ -162,7 +157,7 @@ if __name__ == "__main__":
         for k, v in globals().items()
         if not k.startswith("_") and isinstance(v, (int, float, bool, str, list, tuple, dict, type(None)))
     ]
-    exec(open("utils/configurator.py").read())  # type: ignore[misc]  # noqa: S102
+    apply_overrides(globals())
     config: Dict[str, Any] = {k: globals()[k] for k in config_keys}
 
     run(config)

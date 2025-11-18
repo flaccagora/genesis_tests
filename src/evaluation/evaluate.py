@@ -1,8 +1,12 @@
-from models import DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor
+from __future__ import annotations
+
 import torch
 import numpy as np
-import genesis as gs # type: ignore
+import genesis as gs  # type: ignore
+
 from data import ImageRotationDataset, show_images
+from models import DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor
+from utils.configurator import apply_overrides
 from utils.rotation import rotate_entity
 
 def gs_simul_setup(entity_name):
@@ -152,7 +156,7 @@ if __name__ == "__main__":
     entity = "Torus"
     # -----------------------------------------------------------------------------
     config_keys = [k for k,v in globals().items() if not k.startswith('_') and isinstance(v, (int, float, bool, str))]
-    exec(open('utils/configurator.py').read()) # overrides from command line or config file
+    apply_overrides(globals()) # overrides from command line or config file
     config = {k: globals()[k] for k in config_keys} # will be useful for logging
     # ------------------------------F-----------------------------------------------
 

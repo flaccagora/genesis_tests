@@ -1,7 +1,7 @@
 """
-Example configuration overrides for `lit_system/train.py`.
+Example configuration overrides for `train/train.py`.
 Usage:
-    python lit_system/train.py config/lightning.py
+    PYTHONPATH=src python -m train.train config/lightning.py
 """
 
 # Data -------------------------------------------------------------------------
@@ -16,7 +16,7 @@ shuffle = True
 # Model ------------------------------------------------------------------------
 model_variant = "v3"
 learning_rate = 5e-4
-compile_model = False
+compile_model = True
 pretrained_path = None
 
 # Trainer ----------------------------------------------------------------------

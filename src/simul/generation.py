@@ -1,6 +1,8 @@
 import numpy as np
-import genesis as gs # type: ignore
+import genesis as gs  # type: ignore
 import torch
+
+from utils.configurator import apply_overrides
 from utils.rotation import rotate_entity
 
 def gs_simul_setup(entity_name):
@@ -131,7 +133,7 @@ if __name__ == "__main__":
     entity_name ="lungs"
     # -----------------------------------------------------------------------------
     config_keys = [k for k,v in globals().items() if not k.startswith('_') and isinstance(v, (int, float, bool, str))]
-    exec(open('utils/configurator.py').read()) # overrides from command line or config file
+    apply_overrides(globals())  # overrides from command line or config file
     config = {k: globals()[k] for k in config_keys} # will be useful for logging
     # -----------------------------------------------------------------------------
 

@@ -12,7 +12,7 @@ batch_size = 256
 dino="v3"
 model_cls = DeformNet_v3
 # data
-dataset = 'data_lungs_20'
+dataset = 'data_Torus_5'
 device = 'cuda' # examples: 'cpu', 'cuda', 'cuda:0', 'cuda:1' etc., or try 'mps' on macbooks
 dtype = 'bfloat16' if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else 'float16' # 'float32', 'bfloat16', or 'float16' NOT IMPLEMENTED   
 compile = True # use PyTorch 2.0 to compile the model to be faster

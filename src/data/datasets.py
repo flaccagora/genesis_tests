@@ -22,7 +22,7 @@ class ImageRotationDataset(Dataset):
             if fname.lower().endswith((".npy", ".jpg", ".jpeg")):
                 base = os.path.splitext(fname)[0]
                 img_path = os.path.join(self.root_dir, fname)
-                rot_path = os.path.join(self.root_dir, f"{base.replace("image", "rotation")}.th")
+                rot_path = os.path.join(self.root_dir, f"{base.replace('image', 'rotation')}.th")
                 if os.path.exists(rot_path):
                     samples.append((img_path, rot_path))
                 
