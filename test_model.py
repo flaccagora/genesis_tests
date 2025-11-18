@@ -36,44 +36,56 @@ def gs_simul_setup(entity_name):
 
     ########################## entities ##########################
     pos=(0.5, 1, 0.3)
-    if entity != "dragon":
+    if entity_name == "Torus":
         scene.add_entity(morph=gs.morphs.Plane())
         pos = (0.5,0.4,0.3)
-
+    if entity_name == "lungs":
+        pos=(0.5, 1, 0.3)
+   
     E, nu = 3.e4, 0.45
     rho = 1000.
 
 
-    torus_fem_0 = scene.add_entity(
+    material = gs.materials.FEM.Muscle(
+            E=E,
+            nu=nu,
+            rho=rho,
+            model='stable-neohooken',
+        )
+    if entity_name == "lungs":
+        material = None
+
+    surface=gs.surfaces.Rough(
+            diffuse_texture=gs.textures.ImageTexture(
+                image_path="assets/textures/all_low_lunghs_BaseColor.lungh_part01.jpeg",
+            )
+        )
+
+    if entity_name != "lungs":
+        surface = None
+
+
+    entity = scene.add_entity(
         morph=gs.morphs.Mesh(
             file=f'assets/{entity_name}.obj',
             pos=pos,
             scale=0.2,
             ),
-        material=gs.materials.FEM.Muscle(
-            E=E,
-            nu=nu,
-            rho=rho,
-            model='stable-neohooken',
-        ),
+        material=material,
+        surface = surface
     )
 
-    torus_fem_1 = scene.add_entity(
+    pos_1 = np.array(pos)
+    pos_1 = pos_1 + np.array([1,0,0])
+    entity_2 = scene.add_entity(
         morph=gs.morphs.Mesh(
             file=f'assets/{entity_name}.obj',
-            pos=pos,
+            pos=tuple(pos),
             scale=0.2,
             ),
-        material=gs.materials.FEM.Muscle(
-            E=E,
-            nu=nu,
-            rho=rho,
-            model='stable-neohooken',
-        ),
     )
 
-    if entity == "dragon":
-
+    if entity_name == "dragon":
         cam = scene.add_camera(
             res    = (640, 480),
             pos    = (0,-1,90),
@@ -82,14 +94,23 @@ def gs_simul_setup(entity_name):
             GUI    = False,
             far    = 500,
         )
-    else:
+    elif entity_name == "Torus":
         cam = scene.add_camera(
             res    = (640, 480),
             pos    = (3., 0.4, 0.3), # (3,,) per torus is enough
             fov    = 30,
             GUI    = False,
         )
-
+    elif entity_name == "lungs":
+        cam = scene.add_camera(
+            res    = (640, 480),
+            pos    = (2.5,-0.5,0.5),
+            lookat = (0.5, 1, 0.3),
+            fov    = 30,
+            GUI    = False,
+        )
+    else:
+        raise ValueError
 
     ########################## build ##########################
     scene.build()
@@ -122,6 +143,7 @@ if __name__ == "__main__":
     parallel_show = False
     feature_analysis = True
     # model
+    models_dir = "trained_models"
     dino = "v3"
     epochs = 10
     model_class = DeformNet_v3 # DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor
@@ -142,18 +164,22 @@ if __name__ == "__main__":
         # Model setup
         trained_model = model_class(device)
         trained_model.to(device)
-        trained_model.load_state_dict(torch.load(f"trained_models/model_{dino}_{epochs}_{dataset}.pth"))
+        trained_model.load_state_dict(torch.load(f"{models_dir}/model_{dino}_{epochs}_{dataset}.pth"))
 
         dataset = ImageRotationDataset("datasets/"+dataset)
 
         # Simul setup
         scene, cam = gs_simul_setup(entity_name=entity)
         i = 0
-        if entity == "dragon":
+        if entity == "dragon" or entity == "lungs":
             i = -1
         torus_fem_0 = scene.entities[1+i]
         torus_fem_1 = scene.entities[2+i]
 
+        rotate = rotate_entity
+        if entity == "lungs":
+            from utils.rotation import rotate_rigid_entity
+            rotate = rotate_rigid_entity
 
         while True:
             image, rotation = get_random_image(dataset)
@@ -163,8 +189,8 @@ if __name__ == "__main__":
             rotation = rotation.squeeze(0)
 
             scene.reset()
-            rotate_entity(torus_fem_0,rotation[0], rotation[1], rotation[2])
-            rotate_entity(torus_fem_1,pred_rotation[0], pred_rotation[1], pred_rotation[2])
+            rotate(torus_fem_0,rotation[0], rotation[1], rotation[2])
+            rotate(torus_fem_1,pred_rotation[0], pred_rotation[1], pred_rotation[2])
             scene.step()
             show_images(cam.render()[0])
 
