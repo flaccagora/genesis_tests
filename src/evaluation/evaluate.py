@@ -147,7 +147,7 @@ if __name__ == "__main__":
     parallel_show = False
     feature_analysis = True
     # model
-    models_dir = "trained_models"
+    model_path = "trained_models"
     dino = "v3"
     epochs = 10
     model_class = DeformNet_v3 # DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor
@@ -160,15 +160,24 @@ if __name__ == "__main__":
     config = {k: globals()[k] for k in config_keys} # will be useful for logging
     # ------------------------------F-----------------------------------------------
 
-    assert (dino == "v3" and (model_class == DeformNet_v3_extractor or model_class == DeformNet_v3)) or (dino == "v2" and model_class == DeformNet_v2), f"model class {model_class} incompatible with dino {dino}"
+    # assert (dino == "v3" and (model_class == DeformNet_v3_extractor or model_class == DeformNet_v3)) or (dino == "v2" and model_class == DeformNet_v2), f"model class {model_class} incompatible with dino {dino}"
     assert feature_analysis or parallel_show, "choose one among feature_analysis or parallel_show"
 
     if parallel_show:
 
         # Model setup
-        trained_model = model_class(device)
-        trained_model.to(device)
-        trained_model.load_state_dict(torch.load(f"{models_dir}/model_{dino}_{epochs}_{dataset}.pth"))
+        # trained_model = model_class(device)
+        # trained_model.to(device)
+        # trained_model.load_state_dict(torch.load(model_path))
+        from train import DeformNetLightningModule
+        trained_model = DeformNetLightningModule(
+            model_variant=model_class,
+            pretrained_path=model_path,
+        )
+
+
+
+
 
         dataset = ImageRotationDataset("datasets/"+dataset)
 
