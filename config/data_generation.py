@@ -1,5 +1,5 @@
 # -----------------------------------------------------------------------------
-entity_name = "Torus" # object in assets folder 
+entity_name='lungs'# object in assets folder 
 dataset_name = 'data'
 n = 20
 # -----------------------------------------------------------------------------
