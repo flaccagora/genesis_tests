@@ -1,11 +1,14 @@
 import os
-from typing import Optional
+from typing import List, Optional, Union
 
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from data import ImageRotationDataset
+
+
+DataLoaderLike = Union[DataLoader, List[DataLoader]]
 
 
 class RotationDataModule(pl.LightningDataModule):
@@ -66,9 +69,9 @@ class RotationDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
         )
 
-    def val_dataloader(self) -> Optional[DataLoader]:
+    def val_dataloader(self) -> DataLoaderLike:
         if self.val_dataset is None:
-            return None
+            return []
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
@@ -76,9 +79,9 @@ class RotationDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
         )
 
-    def test_dataloader(self) -> Optional[DataLoader]:
+    def test_dataloader(self) -> DataLoaderLike:
         if self.test_dataset is None:
-            return None
+            return []
         return DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,

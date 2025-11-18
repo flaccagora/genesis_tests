@@ -1,0 +1,8 @@
+Project Rules:
+- Prefer absolute imports rooted at `/home/flaccagora/Desktop/genesis_tests`.
+- Keep Python style Black-compatible (PEP 8, 88-char soft limit); run formatters when touching files.
+- New/modified functions require type hints for parameters and return types.
+- Training/experiment scripts must rely on config globals + `utils/configurator.py` overrides instead of argparse.
+- Default logger stack: enable Weights & Biases (wandb) and TensorBoard unless explicitly disabled in config.
+- When integrating new features, update config defaults plus matching files under `config/` for discoverability.
+- Activate genesis conda environment before installing packages and running scripts
