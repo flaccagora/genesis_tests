@@ -1,5 +1,5 @@
 import torch
-from models import DeformNet_v3_extractor, DeformNet_v3
+from src.models import DeformNet_v3_extractor, DeformNet_v3
 # -----------------------------------------------------------------------------
 # default config values designed to train a gpt2 (124M) on OpenWebText
 # I/O

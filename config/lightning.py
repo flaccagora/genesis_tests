@@ -30,7 +30,7 @@ limit_train_batches = 1.0
 limit_val_batches = 1.0
 limit_test_batches = 1.0
 checkpoint_name = "deformnet-{epoch:02d}-{val_loss:.4f}"
-resume_from = None
+resume_from = None # "lightning_logs/genesis-tests/184pqxxj/checkpoints/last.ckpt"
 
 # Logging ----------------------------------------------------------------------
 use_wandb = True

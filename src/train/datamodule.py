@@ -67,6 +67,7 @@ class RotationDataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             shuffle=self.shuffle,
             num_workers=self.num_workers,
+            persistent_workers=True,
         )
 
     def val_dataloader(self) -> DataLoaderLike:
