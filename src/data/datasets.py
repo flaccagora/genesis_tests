@@ -19,12 +19,13 @@ class ImageRotationDataset(Dataset):
     def _load_samples(self):
         samples = []
         for fname in os.listdir(self.root_dir):
-            if fname.lower().endswith((".npy", ".jpg", ".jpeg")):
+            if fname.lower().startswith(("rgb")):
                 base = os.path.splitext(fname)[0]
-                img_path = os.path.join(self.root_dir, fname)
-                rot_path = os.path.join(self.root_dir, f"{base.replace('image', 'rotation')}.th")
+                rgb_path = os.path.join(self.root_dir, fname)
+                depth_path = os.path.join(self.root_dir, f"{base.replace('rgb', 'depth')}.npy")
+                rot_path = os.path.join(self.root_dir, f"{base.replace('rgb', 'rotation')}.th")
                 if os.path.exists(rot_path):
-                    samples.append((img_path, rot_path))
+                    samples.append((rgb_path, depth_path, rot_path))
                 
         return samples
 
@@ -32,18 +33,20 @@ class ImageRotationDataset(Dataset):
         return len(self.samples)
 
     def __getitem__(self, idx):
-        img_path, rot_path = self.samples[idx]
+        rgb_path, depth_path, rot_path = self.samples[idx]
         # Load image
-        image = np.load(img_path)
+        rgb = np.load(rgb_path)
+        depth = np.load(depth_path)
         if self.transform:
-            image = self.transform(image)
+            rgb = self.transform(rgb)
         else:
-            image = transforms.ToTensor()(image)
-        
+            rgb = transforms.ToTensor()(rgb)
+        depth = transforms.ToTensor()(depth)
+
         # Load rotation matrix (1x3)
         rotation_matrix = torch.load(rot_path)
 
-        return image, rotation_matrix
+        return rgb, depth, rotation_matrix
 
 def show_image(image_array):
     """

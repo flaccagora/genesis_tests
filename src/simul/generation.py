@@ -162,11 +162,12 @@ if __name__ == "__main__":
                 scene.step()
                 
                 # save image and rotation matrix
-                img = np.array(cam.render()[0])
+                rgb, depth = cam.render(rgb=True, depth=True)
                 # R = rotation_matrix_xyz(angle[0], angle[1], angle[2])
                 # R = torch.tensor([angle[0], angle[1], angle[2]])
                 
                 # save img and R to disk
-                np.save(f"datasets/{dataset_name}_{entity_name}_{n}/image_f1_{f1}_f2_{f2}_f3_{f3}_n_{n}.npy", img)
+                np.save(f"datasets/{dataset_name}_{entity_name}_{n}/rgb_f1_{f1}_f2_{f2}_f3_{f3}_n_{n}.npy", rgb)
+                np.save(f"datasets/{dataset_name}_{entity_name}_{n}/depth_f1_{f1}_f2_{f2}_f3_{f3}_n_{n}.npy", depth)
                 torch.save(angle, f"datasets/{dataset_name}_{entity_name}_{n}/rotation_f1_{f1}_f2_{f2}_f3_{f3}_n_{n}.th")
             progress_bar.update(n)
