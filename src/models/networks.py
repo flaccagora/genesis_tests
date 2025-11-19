@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from transformers import AutoImageProcessor, AutoModel
-from transformers import pipeline
 
 class DeformNet_v2(nn.Module):
     def __init__(self, device):
@@ -74,8 +73,13 @@ class DeformNet_v3(nn.Module):
         
     def forward(self, x):
         runtime_device = self._resolve_device()
-        inputs = self.processor(images=x, return_tensors="pt", do_rescale=False).to(runtime_device)
-        outputs = self.dino(**inputs)
+        # inputs = self.processor(images=x, return_tensors="pt", 
+        #                         do_rescale=False,
+        #                         do_resize=False,
+        #                         do_center_crop=False).to(runtime_device)
+
+        # outputs = self.dino(**inputs)
+        outputs = self.dino(x)
         x = outputs.last_hidden_state  # (batch_size, seq_len, feature_dim)
         x = torch.mean(x, dim=1)  # Global average pooling
         x = torch.relu(self.fc1(x))

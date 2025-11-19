@@ -28,7 +28,7 @@ class RotationDataModule(pl.LightningDataModule):
         img_size: int = 224,
         shuffle: bool = True,
         rgb: bool = True,
-        depth: bool = True
+        depth: bool = False
     ) -> None:
         super().__init__()
         self.train_dir = train_dir

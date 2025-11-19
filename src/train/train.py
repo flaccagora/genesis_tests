@@ -131,6 +131,8 @@ if __name__ == "__main__":
     num_workers = 0
     img_size = 224
     shuffle = True
+    rgb = True
+    depth = False
 
     # Model
     model_variant = "v3"

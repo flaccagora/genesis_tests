@@ -35,12 +35,12 @@ def build_scene(entity_name: str):
             pos=(0.5, 0.4, 0.3),
             scale=0.2,
         ),
-        material=gs.materials.FEM.Muscle(
-            E=3.0e4,
-            nu=0.45,
-            rho=1000.0,
-            model="stable-neohooken",
-        ),
+        # material=gs.materials.FEM.Muscle(
+        #     E=3.0e4,
+        #     nu=0.45,
+        #     rho=1000.0,
+        #     model="stable-neohooken",
+        # ),
     )
 
     cam = scene.add_camera(
@@ -55,7 +55,7 @@ def build_scene(entity_name: str):
     return scene, cam
 
 
-def main(entity_name: str = "dragon") -> None:
+def main(entity_name: str = "lungs") -> None:
     scene, cam = build_scene(entity_name)
 
     import IPython

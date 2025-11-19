@@ -41,7 +41,7 @@ warmup_epochs = 1
 warmup_start_lr = 1e-6
 cosine_final_lr = 1e-6  # For cosine scheduler
 step_size = 10  # For step scheduler (reduce LR every N epochs)
-gamma = 0.1  # For step/exponential scheduler (multiply LR by gamma)
+gamma = 0.05  # For step/exponential scheduler (multiply LR by gamma)
 
 # Logging ----------------------------------------------------------------------
 use_wandb = True
