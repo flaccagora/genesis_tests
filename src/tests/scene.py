@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import genesis as gs  # type: ignore
 
-from data import show_image
+from utils.images import show_image
 
 
 def build_scene(entity_name: str):

@@ -4,10 +4,11 @@ import torch
 import numpy as np
 import genesis as gs  # type: ignore
 
-from data import ImageRotationDataset, show_images
+from data import ImageRotationDataset
 from models import DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor
 from utils.configurator import apply_overrides
 from utils.rotation import rotate_entity
+from utils.images import show_image, show_images
 
 def gs_simul_setup(entity_name):
     ########################## init ##########################
