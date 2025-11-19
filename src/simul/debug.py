@@ -24,7 +24,7 @@ def build_scene(entity_name: str):
         ),
         fem_options=gs.options.FEMOptions(dt=dt),
         vis_options=gs.options.VisOptions(show_world_frame=True),
-        show_viewer=True,
+        show_viewer=False,
     )
 
     scene.add_entity(morph=gs.morphs.Plane())
@@ -56,7 +56,7 @@ def build_scene(entity_name: str):
 
 
 def main(entity_name: str = "dragon") -> None:
-    build_scene(entity_name)
+    scene, cam = build_scene(entity_name)
 
     import IPython
 
