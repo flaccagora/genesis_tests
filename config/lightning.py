@@ -16,7 +16,7 @@ rgb = True
 depth = False
 
 # Model ------------------------------------------------------------------------
-model_variant = "v3"
+model_variant = "v3" # v2 v3_ extractor RGBD
 compile_model = True
 pretrained_path = None
 
