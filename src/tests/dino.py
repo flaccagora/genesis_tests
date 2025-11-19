@@ -31,6 +31,11 @@ if __name__ == "__main__":
     image = pil_to_tensor(load_image(url))
     image = image.numpy()
 
+    def renormalize_pixel_values(pixel_values):
+        mean = torch.tensor(processor.image_mean, device=pixel_values.device).view(1, -1, 1, 1)
+        std = torch.tensor(processor.image_std, device=pixel_values.device).view(1, -1, 1, 1)
+        return (pixel_values * std + mean).clamp(0.0, 1.0)
+
     while True:
         image, rotation = get_random_image(depth = False)
 
@@ -38,8 +43,8 @@ if __name__ == "__main__":
         print("Minimum pixel ", torch.min(image))
         print("Maximum pixel ", torch.max(image))
         show_image(image.permute(1,2,0).detach().cpu().numpy())
-        
-        
+
+
 
 
         inputs = processor(images=image.to("cuda"), return_tensors="pt", 
@@ -52,7 +57,8 @@ if __name__ == "__main__":
         print("Minimum pixel ", torch.min(inputs.pixel_values))
         print("Maximum pixel ", torch.max(inputs.pixel_values))
 
-        show_image(inputs.pixel_values.squeeze(0).permute(1,2,0).detach().cpu().numpy())
+        renormalized = renormalize_pixel_values(inputs.pixel_values)
+        show_image(renormalized.squeeze(0).permute(1,2,0).detach().cpu().numpy())
 
         outputs = dino(**inputs)
         x = outputs.last_hidden_state  # (batch_size, seq_len, feature_dim)
