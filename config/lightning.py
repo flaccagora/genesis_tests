@@ -12,6 +12,8 @@ batch_size = 128
 num_workers = 5
 img_size = None # if set images are cropped to square of l img_size
 shuffle = True
+rgb = True
+depth = False
 
 # Model ------------------------------------------------------------------------
 model_variant = "v3"
@@ -32,7 +34,7 @@ checkpoint_name = "deformnet-{epoch:02d}-{val_loss:.4f}"
 resume_from = None # "lightning_logs/genesis-tests/184pqxxj/checkpoints/last.ckpt"
 
 # LR ---------------------------------------------------------------------------
-learning_rate = 5e-4
+learning_rate = 5e-3
 use_lr_scheduler = True
 scheduler_type = "cosine"  # Options: "cosine", "linear", "exponential", "step"
 warmup_epochs = 1

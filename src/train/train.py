@@ -83,6 +83,8 @@ def run(config: Dict[str, Any]) -> None:
         num_workers=config["num_workers"],
         img_size=config["img_size"],
         shuffle=config["shuffle"],
+        rgb=config["rgb"],
+        depth=config["depth"]
     )
 
     lightning_module = DeformNetLightningModule(

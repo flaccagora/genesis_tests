@@ -27,6 +27,8 @@ class RotationDataModule(pl.LightningDataModule):
         num_workers: int = 0,
         img_size: int = 224,
         shuffle: bool = True,
+        rgb: bool = True,
+        depth: bool = True
     ) -> None:
         super().__init__()
         self.train_dir = train_dir
@@ -36,6 +38,8 @@ class RotationDataModule(pl.LightningDataModule):
         self.num_workers = num_workers
         self.img_size = img_size
         self.shuffle = shuffle
+        self.rgb = rgb
+        self.depth = depth
         transform_ops = [transforms.ToTensor()]
         if img_size:
             transform_ops.append(transforms.Resize((img_size, img_size)))
@@ -50,7 +54,7 @@ class RotationDataModule(pl.LightningDataModule):
             return None
         if not os.path.isdir(directory):
             raise FileNotFoundError(f"Expected dataset directory at {directory}, but it was not found.")
-        return ImageRotationDataset(directory, transform=self.transform)
+        return ImageRotationDataset(directory, rgb=self.rgb, depth=self.depth, transform=self.transform)
 
     def setup(self, stage: Optional[str] = None) -> None:
         if stage in (None, "fit"):

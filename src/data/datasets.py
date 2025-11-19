@@ -6,13 +6,15 @@ import os
 import numpy as np
 
 class ImageRotationDataset(Dataset):
-    def __init__(self, root_dir, transform=None):
+    def __init__(self, root_dir, rgb, depth, transform=None):
         """
         Args:
             root_dir (str): Path to the dataset folder containing images and .npy rotation matrices.
             transform (callable, optional): Optional transform to be applied to images.
         """
         self.root_dir = root_dir
+        self.rgb = rgb
+        self.depth = depth
         self.transform = transform
         self.samples = self._load_samples()
 
@@ -34,19 +36,34 @@ class ImageRotationDataset(Dataset):
 
     def __getitem__(self, idx):
         rgb_path, depth_path, rot_path = self.samples[idx]
-        # Load image
+
+        # --- Load arrays ---
         rgb = np.load(rgb_path)
         depth = np.load(depth_path)
-        if self.transform:
-            rgb = self.transform(rgb)
-        else:
-            rgb = transforms.ToTensor()(rgb)
-        depth = transforms.ToTensor()(depth)
 
-        # Load rotation matrix (1x3)
+        # --- Convert to tensor & apply transforms ---
+        to_tensor = transforms.ToTensor()
+
+        rgb = self.transform(rgb) if self.transform else to_tensor(rgb)
+        depth = to_tensor(depth)
+
+        # --- Build RGB-D tensor if requested ---
+        if self.rgb and self.depth:
+            # Ensure depth has channel dimension (1, H, W)
+            if depth.dim() == 2:
+                depth = depth.unsqueeze(0)
+
+            # Concatenate to RGBD (4, H, W)
+            rgbd = torch.cat([rgb, depth], dim=0)
+        else:
+            # Fall back to using whichever data is requested
+            rgbd = rgb if self.rgb else depth
+
+        # --- Load target rotation matrix ---
         rotation_matrix = torch.load(rot_path)
 
-        return rgb, depth, rotation_matrix
+        return rgbd, rotation_matrix
+
 
 def show_image(image_array):
     """
