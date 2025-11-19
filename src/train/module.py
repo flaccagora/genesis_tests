@@ -14,13 +14,14 @@ from torch.optim.lr_scheduler import (
     SequentialLR,
 )
 
-from models import DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor
+from models import DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor, RGBDNN
 
 
 MODEL_REGISTRY: Dict[str, Type[nn.Module]] = {
     "v2": DeformNet_v2,
     "v3": DeformNet_v3,
     "v3_extractor": DeformNet_v3_extractor,
+    "RGBD": RGBDNN,
 }
 
 
