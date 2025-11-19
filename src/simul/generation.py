@@ -162,7 +162,7 @@ if __name__ == "__main__":
                 scene.step()
                 
                 # save image and rotation matrix
-                rgb, depth = cam.render(rgb=True, depth=True)
+                rgb, depth, _, _ = cam.render(rgb=True, depth=True)
                 # R = rotation_matrix_xyz(angle[0], angle[1], angle[2])
                 # R = torch.tensor([angle[0], angle[1], angle[2]])
                 
