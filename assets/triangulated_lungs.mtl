@@ -13,7 +13,7 @@ map_Ns all_low_lunghs_Roughness.lungh_part01.jpg
 map_refl all_low_lunghs_Metalness.lungh_part01.jpg
 map_Bump -bm 1.000000 all_low_lunghs_Normal.lungh_part01.png
 
-newmtl thairoid01:lungh_part02.001
+newmtl thairoid01:lungh_part02
 Ka 1.000000 1.000000 1.000000
 Ks 0.500000 0.500000 0.500000
 Ke 0.000000 0.000000 0.000000
