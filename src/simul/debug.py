@@ -36,12 +36,12 @@ def build_scene(entity_name: str):
             pos=(0.5, 0.4, 0.3),
             scale=0.2,
         ),
-        material=gs.materials.MPM.Muscle(
-            E=3.0e4,
-            nu=0.45,
-            rho=1000.0,
-            model="neohooken",
-        ),
+        # material=gs.materials.MPM.Muscle(
+        #     E=3.0e4,
+        #     nu=0.45,
+        #     rho=1000.0,
+        #     model="neohooken",
+        # ),
     )
 
     cam = scene.add_camera(
@@ -68,7 +68,7 @@ def main(entity_name: str = "lungs") -> None:
     while True:
         R = generate_random_rotation_matrix()
         print(R)
-        rotate_entity(entity, R)
+        rotate_rigid_entity(entity, R)
         scene.step()
 
         a = input()
