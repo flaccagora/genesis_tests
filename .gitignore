@@ -220,3 +220,5 @@ __marimo__/
 datasets/
 lightning_logs/*
 *.pth
+*.face
+*.node
