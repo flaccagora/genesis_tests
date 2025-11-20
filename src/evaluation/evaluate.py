@@ -174,7 +174,16 @@ if __name__ == "__main__":
             pretrained_path=model_path,
         )
 
-        dataset = ImageRotationDataset("datasets/"+dataset)
+        from torchvision import transforms
+        transform_ops = [transforms.ToTensor(),
+                            transforms.Resize((224, 224)),
+                            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                std=[0.229, 0.224, 0.225])
+                            ]
+
+        transform = transforms.Compose(transform_ops)
+
+        dataset = ImageRotationDataset("datasets/"+dataset, transform=None)
 
         # Simul setup
         scene, cam = gs_simul_setup(entity_name=entity)
@@ -192,11 +201,14 @@ if __name__ == "__main__":
         while True:
             image, rotation = get_random_image(dataset)
             pred_rotation = get_predicted_rotation(image,trained_model)
-            if model_class == RotationPredictor:
-                pred_rotation = rot6d_to_rotmat(pred_rotation.unsqueeze(0))
+            # if model_class == RotationPredictor:
+            #     print("converting 6D to 3x3mat")
+            pred_rotation = rot6d_to_rotmat(pred_rotation.unsqueeze(0)).squeeze(0)
 
-            print("rotation ", rotation,"predicted rotation ", pred_rotation)
+            print("rotation ", rotation,"\npredicted rotation ", pred_rotation)
             rotation = rotation.squeeze(0)
+
+            print(rotation.shape, pred_rotation.shape)
 
             scene.reset()
             rotate(torus_fem_0,rotation)
