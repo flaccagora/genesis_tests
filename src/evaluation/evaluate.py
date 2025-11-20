@@ -5,9 +5,9 @@ import numpy as np
 import genesis as gs  # type: ignore
 
 from data import ImageRotationDataset
-from models import DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor
+from models import DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor, RotationPredictor
 from utils.configurator import apply_overrides
-from utils.rotation import rotate_entity
+from utils.rotation import rotate_entity, rot6d_to_rotmat
 from utils.images import show_image, show_images
 
 def gs_simul_setup(entity_name):
@@ -192,13 +192,15 @@ if __name__ == "__main__":
         while True:
             image, rotation = get_random_image(dataset)
             pred_rotation = get_predicted_rotation(image,trained_model)
+            if model_class == RotationPredictor:
+                pred_rotation = rot6d_to_rotmat(pred_rotation.unsqueeze(0))
 
             print("rotation ", rotation,"predicted rotation ", pred_rotation)
             rotation = rotation.squeeze(0)
 
             scene.reset()
-            rotate(torus_fem_0,rotation[0], rotation[1], rotation[2])
-            rotate(torus_fem_1,pred_rotation[0], pred_rotation[1], pred_rotation[2])
+            rotate(torus_fem_0,rotation)
+            rotate(torus_fem_1,pred_rotation)
             scene.step()
             show_images(cam.render()[0])
 
