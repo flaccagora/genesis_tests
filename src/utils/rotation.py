@@ -303,6 +303,113 @@ def euler_to_rotmat(euler_angles):
     
     return rot_mat
 
+def rotmat_to_quaternion(rot_mat):
+    """
+    Convert 3x3 rotation matrix to quaternion (w, x, y, z).
+    Uses Shepperd's method for numerical stability.
+    
+    Args:
+        rot_mat: 3x3 rotation matrix or batch (B, 3, 3)
+    
+    Returns:
+        Quaternion (w, x, y, z) or batch (B, 4)
+    """
+    batch_mode = rot_mat.dim() == 3
+    if not batch_mode:
+        rot_mat = rot_mat.unsqueeze(0)
+    
+    batch_size = rot_mat.shape[0]
+    device = rot_mat.device
+    
+    quaternions = torch.zeros(batch_size, 4, device=device)
+    
+    for i in range(batch_size):
+        R = rot_mat[i]
+        
+        # Shepperd's method - compute based on trace and diagonal elements
+        trace = R[0, 0] + R[1, 1] + R[2, 2]
+        
+        if trace > 0:
+            # w is largest
+            s = 0.5 / torch.sqrt(trace + 1.0)
+            w = 0.25 / s
+            x = (R[2, 1] - R[1, 2]) * s
+            y = (R[0, 2] - R[2, 0]) * s
+            z = (R[1, 0] - R[0, 1]) * s
+        elif R[0, 0] > R[1, 1] and R[0, 0] > R[2, 2]:
+            # x is largest
+            s = 2.0 * torch.sqrt(1.0 + R[0, 0] - R[1, 1] - R[2, 2])
+            w = (R[2, 1] - R[1, 2]) / s
+            x = 0.25 * s
+            y = (R[0, 1] + R[1, 0]) / s
+            z = (R[0, 2] + R[2, 0]) / s
+        elif R[1, 1] > R[2, 2]:
+            # y is largest
+            s = 2.0 * torch.sqrt(1.0 + R[1, 1] - R[0, 0] - R[2, 2])
+            w = (R[0, 2] - R[2, 0]) / s
+            x = (R[0, 1] + R[1, 0]) / s
+            y = 0.25 * s
+            z = (R[1, 2] + R[2, 1]) / s
+        else:
+            # z is largest
+            s = 2.0 * torch.sqrt(1.0 + R[2, 2] - R[0, 0] - R[1, 1])
+            w = (R[1, 0] - R[0, 1]) / s
+            x = (R[0, 2] + R[2, 0]) / s
+            y = (R[1, 2] + R[2, 1]) / s
+            z = 0.25 * s
+        
+        quaternions[i] = torch.tensor([w, x, y, z], device=device)
+    
+    if not batch_mode:
+        quaternions = quaternions.squeeze(0)
+    
+    return quaternions
+
+def quaternion_to_rotmat(quaternions):
+    """
+    Convert quaternion (w, x, y, z) to 3x3 rotation matrix.
+    
+    Args:
+        quaternions: Quaternion (w, x, y, z) or batch (B, 4)
+    
+    Returns:
+        3x3 rotation matrix or batch (B, 3, 3)
+    """
+    batch_mode = quaternions.dim() == 2
+    if not batch_mode:
+        quaternions = quaternions.unsqueeze(0)
+    
+    batch_size = quaternions.shape[0]
+    device = quaternions.device
+    
+    # Normalize quaternions
+    q = F.normalize(quaternions, dim=1)  # (B, 4)
+    
+    w, x, y, z = q[:, 0], q[:, 1], q[:, 2], q[:, 3]
+    
+    # Compute rotation matrix from quaternion
+    rot_mat = torch.zeros(batch_size, 3, 3, device=device)
+    
+    # First row
+    rot_mat[:, 0, 0] = 1 - 2 * (y**2 + z**2)
+    rot_mat[:, 0, 1] = 2 * (x * y - z * w)
+    rot_mat[:, 0, 2] = 2 * (x * z + y * w)
+    
+    # Second row
+    rot_mat[:, 1, 0] = 2 * (x * y + z * w)
+    rot_mat[:, 1, 1] = 1 - 2 * (x**2 + z**2)
+    rot_mat[:, 1, 2] = 2 * (y * z - x * w)
+    
+    # Third row
+    rot_mat[:, 2, 0] = 2 * (x * z - y * w)
+    rot_mat[:, 2, 1] = 2 * (y * z + x * w)
+    rot_mat[:, 2, 2] = 1 - 2 * (x**2 + y**2)
+    
+    if not batch_mode:
+        rot_mat = rot_mat.squeeze(0)
+    
+    return rot_mat
+
 
 def rotation_matrix_to_quaternion(R: torch.Tensor) -> torch.Tensor:
     """
@@ -450,3 +557,14 @@ if __name__ == "__main__":
     print(f"   Input axis-angle shape: {axis_angle.shape}")
     print(f"   Output 3x3 shape: {rot_from_axis.shape}")
     print(f"   Valid rotation? {verify_rotation_matrix(rot_from_axis)}")
+
+    # 6. Quaternion conversions
+    print("\n6. Quaternion ↔ 3x3 Rotation Matrix:")
+    quat = torch.randn(2, 4)
+    quat = F.normalize(quat, dim=1)  # Normalize quaternion
+    rot_from_quat = quaternion_to_rotmat(quat)
+    quat_recovered = rotmat_to_quaternion(rot_from_quat)
+    print(f"   Input Quaternion shape: {quat.shape}")
+    print(f"   Output 3x3 shape: {rot_from_quat.shape}")
+    print(f"   Valid rotation? {verify_rotation_matrix(rot_from_quat)}")
+    print(f"   Matches original? {torch.allclose(quat_recovered, quat, atol=1e-5)}")

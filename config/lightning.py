@@ -5,7 +5,7 @@ Usage:
 """
 
 # Data -------------------------------------------------------------------------
-train_dir = "datasets/data_lungs_20"
+train_dir = "datasets/data_Torus_20"
 val_dir = None
 test_dir = None
 batch_size = 128
@@ -16,7 +16,7 @@ rgb = True
 depth = False
 
 # Model ------------------------------------------------------------------------
-model_variant = "v3" # v2 v3_ extractor RGBD
+model_variant = "RotationPredictor" # v2 v3_ extractor RGBD RotationPredictor
 compile_model = True
 pretrained_path = None
 

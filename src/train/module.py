@@ -14,7 +14,7 @@ from torch.optim.lr_scheduler import (
     SequentialLR,
 )
 
-from models import DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor, RGBDNN
+from models import DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor, RGBDNN, RotationPredictor
 from loss.loss import geodesic_loss
 
 MODEL_REGISTRY: Dict[str, Type[nn.Module]] = {
@@ -22,6 +22,7 @@ MODEL_REGISTRY: Dict[str, Type[nn.Module]] = {
     "v3": DeformNet_v3,
     "v3_extractor": DeformNet_v3_extractor,
     "RGBD": RGBDNN,
+    "RotationPredictor": RotationPredictor
 }
 
 
@@ -54,7 +55,7 @@ class DeformNetLightningModule(pl.LightningModule):
 
         self.save_hyperparameters()
         model_cls = MODEL_REGISTRY[model_variant]
-        self.model = model_cls(device="cpu")
+        self.model = model_cls()
 
         if pretrained_path:
             state_dict = torch.load(Path(pretrained_path), map_location="cpu")
