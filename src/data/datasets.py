@@ -94,7 +94,7 @@ if __name__ == "__main__":
         return rgbd, rotation
 
     # Example usage
-    dataset_path = "datasets/data_Torus_20"
+    dataset_path = "datasets/data_lungs_5"
     while True:
         img , rot = get_random_image(dataset_path, depth=False)
         show_image(img)

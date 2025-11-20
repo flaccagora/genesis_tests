@@ -110,8 +110,8 @@ def gs_simul_setup(entity_name):
     elif "lung" in entity_name:
         cam = scene.add_camera(
             res    = (640, 480),
-            pos    = (2.5,-0.5,0.5),
-            lookat = (0.5, 1, 0.3),
+            pos    = (2.5,-2,0.5),
+            lookat = (0.5, 0.4, 0.3),
             fov    = 30,
             GUI    = False,
         )
@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
     scene, cam, scene_entity = gs_simul_setup(entity_name)
 
-    rotate = rotate_MPM_entity
+    rotate = rotate_entity
     if entity_name == "lungs":
         from utils.rotation import rotate_rigid_entity
         rotate = rotate_rigid_entity
