@@ -126,6 +126,7 @@ def gs_simul_setup(entity_name):
 if __name__ == "__main__":
     from tqdm import tqdm
     import os
+    from utils.rotation import generate_random_rotation_matrix
     # -----------------------------------------------------------------------------
     # data
     dataset_name = 'data'
@@ -155,10 +156,10 @@ if __name__ == "__main__":
         for f2 in range(n):
             for f3 in range(n):
                 # angle = torch.tensor([torch.pi * f1 / n, torch.pi * f2 / n, torch.pi * f3 / n])
-                angle = torch.rand((1,3)) * torch.pi
+                rotation_matrix = generate_random_rotation_matrix()
                 scene.reset()
                 
-                rotate(scene_entity, angle, center=None)
+                rotate(scene_entity, rotation_matrix, center=None)
                 scene.step()
                 
                 # save image and rotation matrix
@@ -169,5 +170,5 @@ if __name__ == "__main__":
                 # save img and R to disk
                 np.save(f"datasets/{dataset_name}_{entity_name}_{n}/rgb_f1_{f1}_f2_{f2}_f3_{f3}_n_{n}.npy", rgb)
                 np.save(f"datasets/{dataset_name}_{entity_name}_{n}/depth_f1_{f1}_f2_{f2}_f3_{f3}_n_{n}.npy", depth)
-                torch.save(angle, f"datasets/{dataset_name}_{entity_name}_{n}/rotation_f1_{f1}_f2_{f2}_f3_{f3}_n_{n}.th")
+                torch.save(rotation_matrix, f"datasets/{dataset_name}_{entity_name}_{n}/rotation_f1_{f1}_f2_{f2}_f3_{f3}_n_{n}.th")
             progress_bar.update(n)
