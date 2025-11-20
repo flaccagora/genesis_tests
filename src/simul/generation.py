@@ -3,7 +3,7 @@ import genesis as gs  # type: ignore
 import torch
 
 from utils.configurator import apply_overrides
-from utils.rotation import rotate_entity
+from utils.rotation import rotate_entity, rotate_MPM_entity
 
 def gs_simul_setup(entity_name):
     ########################## init ##########################
@@ -31,7 +31,7 @@ def gs_simul_setup(entity_name):
         vis_options=gs.options.VisOptions(
             show_world_frame=False,
         ),
-        show_viewer=False,
+        show_viewer=True,
     )
 
     ########################## entities ##########################
@@ -40,9 +40,9 @@ def gs_simul_setup(entity_name):
         print("set pos for Torus")
         scene.add_entity(morph=gs.morphs.Plane())
         pos = (0.5,0.4,0.3)
-    if entity_name == "lungs":
+    if "lung" in entity_name    :
         print("set pos for lungs")
-        pos=(0.5, 1, 0.3)
+        pos=(0.5, 0.4, 0.3)
    
     E, nu = 3.e4, 0.45
     rho = 1000.
@@ -107,7 +107,7 @@ def gs_simul_setup(entity_name):
             fov    = 30,
             GUI    = False,
         )
-    elif entity_name == "lungs":
+    elif "lung" in entity_name:
         cam = scene.add_camera(
             res    = (640, 480),
             pos    = (2.5,-0.5,0.5),
@@ -142,7 +142,7 @@ if __name__ == "__main__":
 
     scene, cam, scene_entity = gs_simul_setup(entity_name)
 
-    rotate = rotate_entity
+    rotate = rotate_MPM_entity
     if entity_name == "lungs":
         from utils.rotation import rotate_rigid_entity
         rotate = rotate_rigid_entity
@@ -168,3 +168,6 @@ if __name__ == "__main__":
                 np.save(f"datasets/{dataset_name}_{entity_name}_{n}/depth_f1_{f1}_f2_{f2}_f3_{f3}_n_{n}.npy", depth)
                 torch.save(rotation_matrix, f"datasets/{dataset_name}_{entity_name}_{n}/rotation_f1_{f1}_f2_{f2}_f3_{f3}_n_{n}.th")
             progress_bar.update(n)
+
+    # import IPython
+    # IPython.embed()

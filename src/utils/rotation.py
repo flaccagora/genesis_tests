@@ -61,6 +61,29 @@ def rotate_entity(entity, rx, ry=None, rz=None, center=None):
     pos_rotated = pos_centered @ R.T.to(device) + com
     entity.set_position(pos_rotated.sceneless())
 
+def rotate_MPM_entity(entity, rx, ry=None, rz=None, center=None):
+    if rx.shape == torch.Size([1,3]):
+        R = rotation_matrix_xyz(rx[0,0], rx[0,1],rx[0,2])
+    elif ry == None or rz == None and rx.shape == torch.Size([3,3]):
+        R = rx
+    elif (ry is not None) and (rz is not None):
+        R = rotation_matrix_xyz(rx, ry, rz)
+    else:
+        raise ValueError
+
+    state = entity.get_state()
+    pos = state.pos
+    vel = state.vel
+    device = pos.device
+    if center is not None:
+        com = center
+    else:   
+        com = pos.mean(dim=1)
+    pos_centered = pos - com
+    pos_rotated = pos_centered @ R.T.to(device) + com
+    entity.set_position(pos_rotated.sceneless())
+    entity.set_velocity(np.zeros_like(vel.cpu().numpy()))
+
 def quat_mul(q1, q2):
     """
     Multiply two quaternions.

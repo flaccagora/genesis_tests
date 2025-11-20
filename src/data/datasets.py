@@ -85,8 +85,8 @@ def create_dataloader(
 if __name__ == "__main__":
     from utils.images import show_image
     
-    def get_random_image(depth = False):
-        dataset = ImageRotationDataset("datasets/data_lungs_5", depth=depth)
+    def get_random_image(dataset, depth = False):
+        dataset = ImageRotationDataset(dataset, depth=depth)
         idx = np.random.randint(len(dataset))
         print(f"Selected index: {idx}")
         rgbd, rotation = dataset[idx]
@@ -94,9 +94,9 @@ if __name__ == "__main__":
         return rgbd, rotation
 
     # Example usage
-    dataset_path = "datasets/data_lungs_5"
+    dataset_path = "datasets/data_Torus_5"
     while True:
-        img , rot = get_random_image(depth=False)
+        img , rot = get_random_image(dataset_path, depth=False)
         show_image(img)
 
     
