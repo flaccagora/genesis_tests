@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt 
 import numpy as np
+import torch
 
 def show_image(image_array):
     """
@@ -8,6 +9,9 @@ def show_image(image_array):
     Parameters:
     image_array (np.ndarray): Image array with shape (height, width, channels)
     """
+    if type(image_array) == torch.Tensor and image_array.shape[0] == 3:
+        image_array = image_array.permute(1,2,0).cpu().numpy()
+
     plt.figure(figsize=(10, 8))
     plt.imshow(image_array)
     plt.axis('off')  # Hide axes

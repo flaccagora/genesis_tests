@@ -18,7 +18,7 @@ if __name__ == "__main__":
     import numpy as np
 
     def get_random_image(depth = False):
-        dataset = ImageRotationDataset("datasets/data_lungs_20", depth=depth)
+        dataset = ImageRotationDataset("datasets/data_lungs_5", depth=depth)
         idx = np.random.randint(len(dataset))
         print(f"Selected index: {idx}")
         rgbd, rotation = dataset[idx]

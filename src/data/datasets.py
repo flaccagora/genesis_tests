@@ -82,3 +82,34 @@ def create_dataloader(
                             shuffle=shuffle, num_workers=num_workers)
     return dataloader
 
+if __name__ == "__main__":
+    from utils.images import show_image
+    
+    def get_random_image(depth = False):
+        dataset = ImageRotationDataset("datasets/data_lungs_5", depth=depth)
+        idx = np.random.randint(len(dataset))
+        print(f"Selected index: {idx}")
+        rgbd, rotation = dataset[idx]
+
+        return rgbd, rotation
+
+    # Example usage
+    dataset_path = "datasets/data_lungs_5"
+    while True:
+        img , rot = get_random_image(depth=False)
+        show_image(img)
+
+    
+    
+    
+    # dataloader = create_dataloader(dataset_path, batch_size=16, img_size=128)
+
+    # for batch_idx, (images, rotations) in enumerate(dataloader):
+    #     print(f"Batch {batch_idx}:")
+    #     print(f"  Images shape: {images.shape}")
+    #     print(f"  Rotations shape: {rotations.shape}")
+    #     show_image(images[0])  # Show first image in the batch
+    #     if batch_idx == 1:  # Just show first two batches
+    #         break
+
+    

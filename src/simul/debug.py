@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import genesis as gs  # type: ignore
-
+from utils.images import show_image, show_images
+from utils.rotation import generate_random_rotation_matrix, rotate_rigid_entity, rotate_entity
 
 def build_scene(entity_name: str):
     gs.init(seed=0, precision="32", logging_level="info")
@@ -58,10 +59,19 @@ def build_scene(entity_name: str):
 def main(entity_name: str = "lungs") -> None:
     scene, cam = build_scene(entity_name)
 
-    import IPython
+    # import IPython
 
-    IPython.embed()  # noqa: T100
+    # IPython.embed()  # noqa: T100
 
 
+    entity = scene.entities[1]
+    while True:
+        R = generate_random_rotation_matrix()
+        print(R)
+        rotate_entity(entity, R)
+        scene.step()
+
+        a = input()
+7       
 if __name__ == "__main__":
     main("lung_lobes")

@@ -318,7 +318,7 @@ def rotation_matrix_to_quaternion(R: torch.Tensor) -> torch.Tensor:
     # X dominant
     R_x = R2[cond_x]
     r_x = torch.sqrt(1.0 + R_x[..., 0, 0] - R_x[..., 1, 1] - R_x[..., 2, 2])
-    q_x = torch.zeros_like(R_x[..., 0]).unsqueeze(-1).repeat(1, 4)
+    q_x = torch.zeros(*R_x.shape[:-2], 4, device=R.device, dtype=R.dtype)
     q_x[..., 1] = 0.5 * r_x
     q_x[..., 0] = (R_x[..., 2, 1] - R_x[..., 1, 2]) / (2.0 * r_x)
     q_x[..., 2] = (R_x[..., 0, 1] + R_x[..., 1, 0]) / (2.0 * r_x)
@@ -328,7 +328,7 @@ def rotation_matrix_to_quaternion(R: torch.Tensor) -> torch.Tensor:
     # Y dominant
     R_y = R2[cond_y]
     r_y = torch.sqrt(1.0 + R_y[..., 1, 1] - R_y[..., 0, 0] - R_y[..., 2, 2])
-    q_y = torch.zeros_like(R_y[..., 0]).unsqueeze(-1).repeat(1, 4)
+    q_y = torch.zeros(*R_y.shape[:-2], 4, device=R.device, dtype=R.dtype)
     q_y[..., 2] = 0.5 * r_y
     q_y[..., 0] = (R_y[..., 0, 2] - R_y[..., 2, 0]) / (2.0 * r_y)
     q_y[..., 1] = (R_y[..., 0, 1] + R_y[..., 1, 0]) / (2.0 * r_y)
@@ -338,7 +338,7 @@ def rotation_matrix_to_quaternion(R: torch.Tensor) -> torch.Tensor:
     # Z dominant
     R_z = R2[cond_z]
     r_z = torch.sqrt(1.0 + R_z[..., 2, 2] - R_z[..., 0, 0] - R_z[..., 1, 1])
-    q_z = torch.zeros_like(R_z[..., 0]).unsqueeze(-1).repeat(1, 4)
+    q_z = torch.zeros(*R_z.shape[:-2], 4, device=R.device, dtype=R.dtype)
     q_z[..., 3] = 0.5 * r_z
     q_z[..., 0] = (R_z[..., 1, 0] - R_z[..., 0, 1]) / (2.0 * r_z)
     q_z[..., 1] = (R_z[..., 0, 2] + R_z[..., 2, 0]) / (2.0 * r_z)
@@ -347,6 +347,8 @@ def rotation_matrix_to_quaternion(R: torch.Tensor) -> torch.Tensor:
 
     # Normalize quaternions
     q = q / q.norm(dim=-1, keepdim=True)
+
+    print("Rotation matrix to quaternion conversion applyed VERIFICA CHE QUESTA FUNZIONE SIA CORRETTA, FUNZIONAMENTO NON ASSICURATO")
 
     return q
 
