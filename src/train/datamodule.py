@@ -40,7 +40,13 @@ class RotationDataModule(pl.LightningDataModule):
         self.shuffle = shuffle
         self.rgb = rgb
         self.depth = depth
-        transform_ops = [transforms.ToTensor()]
+        
+        transform_ops = [transforms.ToTensor(),
+                            transforms.Resize((224, 224)),
+                            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                std=[0.229, 0.224, 0.225])
+                            ]
+
         if img_size:
             transform_ops.append(transforms.Resize((img_size, img_size)))
         self.transform = transforms.Compose(transform_ops)

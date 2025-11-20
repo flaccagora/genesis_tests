@@ -31,7 +31,7 @@ def gs_simul_setup(entity_name):
         vis_options=gs.options.VisOptions(
             show_world_frame=False,
         ),
-        show_viewer=True,
+        show_viewer=False,
     )
 
     ########################## entities ##########################
