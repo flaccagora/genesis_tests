@@ -199,7 +199,7 @@ def main():
     # TODO: Replace with your actual dataset
     from data import ImageRotationDataset
     # Create datasets and dataloaders
-    train_dataset = ImageRotationDataset("datasets/data_lungs_5",transform=transform)
+    train_dataset = ImageRotationDataset("datasets/data_Torus_5",transform=transform)
     
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     
@@ -217,6 +217,12 @@ def main():
         print("Rotation shape:", rotation.shape)
         output = model(image)
         print(output)
+        # rot_target = torch.stack([rotation_6d_to_matrix(rot_6d[i:i+1].reshape(6)).squeeze(0) 
+        #                            for i in range(batch_size)])
+        
+        # Compute loss
+        loss = geodesic_loss(output, rotation.to(device))
+        print(loss)
         break
 
     # # Training loop
