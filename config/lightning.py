@@ -5,7 +5,7 @@ Usage:
 """
 
 # Data -------------------------------------------------------------------------
-train_dir = "datasets/data_Torus_20"
+train_dir = "datasets/data_lungs_20"
 val_dir = None
 test_dir = None
 batch_size = 128

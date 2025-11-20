@@ -54,11 +54,12 @@ class RotationPredictor(nn.Module):
             6D rotation representation (B, 6)
         """
         with torch.no_grad():
-            features = self.backbone(x)
+            features = self.backbone(x).last_hidden_state
         
         # Global average pooling if needed
         if features.dim() > 2:
-            features = features.mean(dim=[2, 3])
+            features = torch.mean(features, dim=1)  # Global average pooling
+
         
         rot_6d = self.head(features)
         
