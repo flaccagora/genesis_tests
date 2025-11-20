@@ -121,7 +121,7 @@ def gs_simul_setup(entity_name):
     ########################## build ##########################
     scene.build()
 
-    return scene, cam
+    return scene, cam, entity
 
 if __name__ == "__main__":
     from tqdm import tqdm
@@ -140,11 +140,7 @@ if __name__ == "__main__":
 
     os.makedirs(f"datasets/{dataset_name}_{entity_name}_{n}",exist_ok=True)
 
-    scene, cam = gs_simul_setup(entity_name)
-    i = 0
-    if entity_name == "dragon" or "lungs":
-        i = -1
-    scene_entity = scene.entities[1+i]
+    scene, cam, scene_entity = gs_simul_setup(entity_name)
 
     rotate = rotate_entity
     if entity_name == "lungs":

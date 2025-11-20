@@ -52,12 +52,13 @@ def rotate_entity(entity, rx, ry=None, rz=None, center=None):
 
     state = entity.get_state()
     pos = state.pos
+    device = pos.device
     if center is not None:
         com = center
     else:   
         com = pos.mean(dim=1)
     pos_centered = pos - com
-    pos_rotated = pos_centered @ R.T + com
+    pos_rotated = pos_centered @ R.T.to(device) + com
     entity.set_position(pos_rotated.sceneless())
 
 def quat_mul(q1, q2):
