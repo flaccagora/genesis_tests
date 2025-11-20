@@ -115,67 +115,47 @@ def rotate_rigid_entity(entity, rx, ry=None, rz=None, center=None):
     entity.set_quat(quat_mul(quat,R))
 
 
-def rot6d_to_rotmat(rot_6d):
+def rot6d_to_rotmat(d6: torch.Tensor) -> torch.Tensor:
     """
-    Convert 6D rotation representation to 3x3 rotation matrix.
-    Based on Zhou et al., "On the Continuity of Rotation Representations in Neural Networks"
-    
+    Converts 6D rotation representation by Zhou et al. [1] to rotation matrix
+    using Gram--Schmidt orthogonalization per Section B of [1].
     Args:
-        rot_6d: Batch of 6D rotation vectors (B, 6) or single vector (6,)
-    
+        d6: 6D rotation representation, of size (*, 6)
+
     Returns:
-        Batch of 3x3 rotation matrices (B, 3, 3) or single matrix (3, 3)
+        batch of rotation matrices of size (*, 3, 3)
+
+    [1] Zhou, Y., Barnes, C., Lu, J., Yang, J., & Li, H.
+    On the Continuity of Rotation Representations in Neural Networks.
+    IEEE Conference on Computer Vision and Pattern Recognition, 2019.
+    Retrieved from http://arxiv.org/abs/1812.07035
     """
-    batch_mode = rot_6d.dim() == 2
-    if not batch_mode:
-        rot_6d = rot_6d.unsqueeze(0)
-    
-    batch_size = rot_6d.shape[0]
-    
-    # Extract first two columns
-    x = rot_6d[:, :3]  # (B, 3)
-    y = rot_6d[:, 3:]  # (B, 3)
-    
-    # Gram-Schmidt orthogonalization
-    x = F.normalize(x, dim=1)  # normalize first column
-    
-    # Remove y component parallel to x, then normalize
-    y = y - (x * y).sum(dim=1, keepdim=True) * x
-    y = F.normalize(y, dim=1)
-    
-    # Third column is cross product
-    z = torch.cross(x, y, dim=1)  # (B, 3)
-    
-    # Stack columns into 3x3 matrix
-    rot_mat = torch.stack([x, y, z], dim=2)  # (B, 3, 3)
-    
-    if not batch_mode:
-        rot_mat = rot_mat.squeeze(0)
-    
-    return rot_mat
+
+    a1, a2 = d6[..., :3], d6[..., 3:]
+    b1 = F.normalize(a1, dim=-1)
+    b2 = a2 - (b1 * a2).sum(-1, keepdim=True) * b1
+    b2 = F.normalize(b2, dim=-1)
+    b3 = torch.cross(b1, b2, dim=-1)
+    return torch.stack((b1, b2, b3), dim=-2)
 
 
-def rotmat_to_rot6d(rot_mat):
+def rotmat_to_rot6d(matrix: torch.Tensor) -> torch.Tensor:
     """
-    Convert 3x3 rotation matrix to 6D representation (first two columns).
-    
+    Converts rotation matrices to 6D rotation representation by Zhou et al. [1]
+    by dropping the last row. Note that 6D representation is not unique.
     Args:
-        rot_mat: Batch of 3x3 rotation matrices (B, 3, 3) or single matrix (3, 3)
-    
+        matrix: batch of rotation matrices of size (*, 3, 3)
+
     Returns:
-        Batch of 6D vectors (B, 6) or single vector (6,)
+        6D rotation representation, of size (*, 6)
+
+    [1] Zhou, Y., Barnes, C., Lu, J., Yang, J., & Li, H.
+    On the Continuity of Rotation Representations in Neural Networks.
+    IEEE Conference on Computer Vision and Pattern Recognition, 2019.
+    Retrieved from http://arxiv.org/abs/1812.07035
     """
-    batch_mode = rot_mat.dim() == 3
-    if not batch_mode:
-        rot_mat = rot_mat.unsqueeze(0)
-    
-    # Extract first two columns and flatten to 6D
-    rot_6d = rot_mat[:, :, :2].reshape(rot_mat.shape[0], -1)  # (B, 6)
-    
-    if not batch_mode:
-        rot_6d = rot_6d.squeeze(0)
-    
-    return rot_6d
+    batch_dim = matrix.size()[:-2]
+    return matrix[..., :2, :].clone().reshape(batch_dim + (6,))
 
 
 def generate_random_rotation_matrix(batch_size=1, device='cpu'):
@@ -496,3 +476,15 @@ if __name__ == "__main__":
     print(f"   Output 3x3 shape: {rot_from_quat.shape}")
     print(f"   Valid rotation? {verify_rotation_matrix(rot_from_quat)}")
     print(f"   Matches original? {torch.allclose(quat_recovered, quat, atol=1e-5)}")
+
+    # 7. mat to 6D and back
+    print("\n7. 3x3 Rotation Matrix ↔ 6D:")
+    rot_mat_example = generate_random_rotation_matrix(batch_size=1)
+    rot_6d_example = rotmat_to_rot6d(rot_mat_example)
+    rot_mat_recovered = rot6d_to_rotmat(rot_6d_example)
+    print(f"   Matches original? {torch.allclose(rot_mat_recovered, rot_mat_example, atol=1e-5)}")
+
+    # print(rot_mat_example, "\n", rot_6d_example, "\n", rot_mat_recovered    )
+    # assert verify_rotation_matrix(rot_mat_example)
+    # assert verify_rotation_matrix(rot_mat_recovered)
+
