@@ -1,14 +1,13 @@
 import torch 
-from src.models import DeformNet_v3, DeformNet_v3_extractor  
 # -----------------------------------------------------------------------------
 #entity
 entity = "lungs"
 # data
 dataset = f"data_{entity}_20"
-parallel_show = True
-feature_analysis = False
+parallel_show = False
+feature_analysis = True
 # model
-model_path = "lightning_logs/genesis-tests/184pqxxj/checkpoints/last.ckpt"
+model_path = "lightning_logs/genesis-tests/7qs4mzrt/checkpoints/last.ckpt"
 dino = "v3" # v2 or v3
 model_class = "v3" # v2, v3, v3_extractor
 epochs = 20
