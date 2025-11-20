@@ -52,7 +52,9 @@ class DeformNet_v3(nn.Module):
         self.device = device
         self.set_feature_extractor_v3(device)
         self.fc1 = nn.Linear(768, 512)
-        self.fc2 = nn.Linear(512, 3)  # Output 1x3 rotation array of angles
+        self.fc2 = nn.Linear(521,256)
+        self.fc3 = nn.Linear(256,128)
+        self.fc4 = nn.Linear(128, 3)  # Output 1x3 rotation array of angles
 
     def _resolve_device(self):
         param = next(self.parameters(), None)
@@ -73,13 +75,12 @@ class DeformNet_v3(nn.Module):
         
     def forward(self, x):
         runtime_device = self._resolve_device()
-        # inputs = self.processor(images=x, return_tensors="pt", 
-        #                         do_rescale=False,
-        #                         do_resize=False,
-        #                         do_center_crop=False).to(runtime_device)
+        inputs = self.processor(images=x, return_tensors="pt", 
+                                do_rescale=False,
+                                do_resize=True,).to(runtime_device)
 
-        # outputs = self.dino(**inputs)
-        outputs = self.dino(x)
+        outputs = self.dino(**inputs)
+        # outputs = self.dino(x)
         x = outputs.last_hidden_state  # (batch_size, seq_len, feature_dim)
         x = torch.mean(x, dim=1)  # Global average pooling
         x = torch.relu(self.fc1(x))
@@ -244,7 +245,7 @@ class RGBDNN(nn.Module):
         inputs = self.processor(
             images=rgb_images,
             return_tensors="pt",
-            do_rescale=False,
+            do_rescale=True,
             do_resize=False,
             do_center_crop=False,
         )

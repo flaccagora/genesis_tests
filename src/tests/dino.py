@@ -40,25 +40,28 @@ if __name__ == "__main__":
         image, rotation = get_random_image(depth = False)
 
         print(image.numpy(), image.shape)
-        print("Minimum pixel ", torch.min(image))
-        print("Maximum pixel ", torch.max(image))
+        print("Minimum pixel ", torch.min(image), torch.std(image))
+        print("Maximum pixel ", torch.max(image), torch.std(image))
         show_image(image.permute(1,2,0).detach().cpu().numpy())
 
 
-
-
         inputs = processor(images=image.to("cuda"), return_tensors="pt", 
-                                # do_rescale=True,
-                                # do_resize=True,
-                                # do_center_crop=True,
+                                do_rescale=False,
+                                do_resize=True,
+                                # do_center_crop=False,
                                                     )
         
         print(inputs.pixel_values, inputs.pixel_values.shape)
-        print("Minimum pixel ", torch.min(inputs.pixel_values))
-        print("Maximum pixel ", torch.max(inputs.pixel_values))
+        print("Maximum pixel ", torch.max(inputs.pixel_values),torch.std(inputs.pixel_values))
+        print("Minimum pixel ", torch.min(inputs.pixel_values),torch.std(inputs.pixel_values))
+        show_image(inputs.pixel_values.squeeze(0).permute(1,2,0).detach().cpu().numpy())
 
-        renormalized = renormalize_pixel_values(inputs.pixel_values)
-        show_image(renormalized.squeeze(0).permute(1,2,0).detach().cpu().numpy())
+        # renormalized = renormalize_pixel_values(inputs.pixel_values)
+        # print(renormalized, renormalized.shape)
+        # print("Minimum pixel ", torch.min(renormalized),torch.std(renormalized))
+        # print("Maximum pixel ", torch.max(renormalized),torch.std(renormalized))
+
+        # show_image(renormalized.squeeze(0).permute(1,2,0).detach().cpu().numpy())
 
         outputs = dino(**inputs)
         x = outputs.last_hidden_state  # (batch_size, seq_len, feature_dim)

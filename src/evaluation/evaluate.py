@@ -125,16 +125,14 @@ def gs_simul_setup(entity_name):
 def get_random_image(dataset):
     idx = np.random.randint(len(dataset.samples))
     print("index: ", idx)
-    image, rotation = dataset.samples[np.random.randint(len(dataset.samples))]
-    image = np.load(image)
-    rotation = torch.load(rotation)
-
+    image, rotation = dataset[idx]
     return image, rotation
 
 def get_predicted_rotation(image, trained_model):
-    image_pt = torch.tensor([image], dtype=torch.float16).to("cuda")
+    # image_pt = torch.tensor([image], dtype=torch.float16).to("cuda")
+    print(image.shape)
     with torch.no_grad():
-        predicted_rotation = trained_model(image_pt)
+        predicted_rotation = trained_model(image.unsqueeze(0))
     return predicted_rotation.squeeze(0)
 
 """REMEMBER TO ALWAYS ROTATE FROM A REFERENCE FRAME POSITION
@@ -176,10 +174,6 @@ if __name__ == "__main__":
             pretrained_path=model_path,
         )
 
-
-
-
-
         dataset = ImageRotationDataset("datasets/"+dataset)
 
         # Simul setup
@@ -210,13 +204,33 @@ if __name__ == "__main__":
 
     if feature_analysis:
         def feature_extraction_analysis(image1, image2):
-
+            images = torch.cat((image1.unsqueeze(0),image2.unsqueeze(0)))
+            
             model = DeformNet_v3(device)
-            inputs = model.processor(images=torch.tensor([image1,image2], dtype=torch.float16), return_tensors="pt", do_rescale=False).to(device)
+            patch_size = model.dino.config.patch_size
+
+            inputs = model.processor(images=images, return_tensors="pt",do_rescale=False).to(device)
+            
+            batch_size, _, img_height, img_width = inputs.pixel_values.shape
+            num_patches_height, num_patches_width = img_height // patch_size, img_width // patch_size
+            num_patches_flat = num_patches_height * num_patches_width
+
+            
             outputs = model.dino(**inputs)
             x = outputs.last_hidden_state
 
-            l = [image1, image2, x[0].cpu().numpy(),x[0].cpu().numpy()]
+            last_hidden_states = outputs.last_hidden_state
+            print(last_hidden_states.shape)  # [1, 1 + 4 + 256, 384]
+            assert last_hidden_states.shape == (2, 1 + model.dino.config.num_register_tokens + num_patches_flat, model.dino.config.hidden_size)
+
+            cls_token = last_hidden_states[:, 0, :]
+            patch_features_flat = last_hidden_states[:, 1 + model.dino.config.num_register_tokens:, :]
+            patch_features = patch_features_flat.unflatten(1, (num_patches_height, num_patches_width))
+
+            print(patch_features.shape, patch_features_flat.shape)
+
+            l = [image1.permute(1,2,0), image2.permute(1,2,0),patch_features_flat[0].cpu(),patch_features_flat[1].cpu(), x[0].cpu().numpy(),x[1].cpu().numpy()]
+            # l = [image1.permute(1,2,0), image2.permute(1,2,0),inputs.pixel_values[0].permute(1,2,0).cpu(),inputs.pixel_values[1].permute(1,2,0).cpu(), x[0].cpu().numpy(),x[1].cpu().numpy()]
             show_images(*l)
             return
         
