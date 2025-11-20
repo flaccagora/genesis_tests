@@ -7,34 +7,6 @@ from tqdm import tqdm
 import numpy as np
 
 
-class RotationDataset(Dataset):
-    """Synthetic rotation dataset. Expects images and rotation matrices."""
-    def __init__(self, images, rotations, transform=None):
-        """
-        Args:
-            images: tensor of shape (N, 3, H, W) or list of image paths
-            rotations: tensor of shape (N, 3, 3) - rotation matrices
-            transform: optional transform for images
-        """
-        self.images = images
-        self.rotations = rotations
-        self.transform = transform
-    
-    def __len__(self):
-        return len(self.images)
-    
-    def __getitem__(self, idx):
-        img = self.images[idx]
-        if self.transform:
-            img = self.transform(img)
-        
-        rot = self.rotations[idx]
-        # Convert rotation matrix to 6D representation (first two columns)
-        rot_6d = rot[:, :2].reshape(-1)
-        
-        return img, rot_6d
-
-
 def rotation_6d_to_matrix(rot_6d):
     """Convert 6D rotation representation to 3x3 rotation matrix."""
     # Gram-Schmidt orthogonalization
