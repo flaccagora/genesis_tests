@@ -15,7 +15,7 @@ from torch.optim.lr_scheduler import (
 )
 
 from models import DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor, RGBDNN
-
+from loss.loss import geodesic_loss
 
 MODEL_REGISTRY: Dict[str, Type[nn.Module]] = {
     "v2": DeformNet_v2,
@@ -63,7 +63,7 @@ class DeformNetLightningModule(pl.LightningModule):
         if compile_model and hasattr(torch, "compile"):
             self.model = torch.compile(self.model)  # type: ignore[attr-defined]
 
-        self.criterion = nn.MSELoss()
+        self.criterion = geodesic_loss
         self.lr = lr
 
         # Learning rate scheduler parameters
