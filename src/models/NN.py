@@ -117,6 +117,14 @@ if __name__ == "__main__":
 
     # instantiate an RGB-only predictor by default
     model = RGB_RotationPredictor(hidden_dim=hidden_dim).to(device)
+    dummy_input = torch.randn(2, 3, 224, 224).to(device)
+    output = model(dummy_input)
+    print("RGB model output shape:", output.shape)
+
+    model = RGBD_RotationPredictor(hidden_dim=hidden_dim).to(device)
+    dummy_input = torch.randn(2, 4, 224, 224).to(device)
+    output = model(dummy_input)
+    print("RGB model output shape:", output.shape)
 
 
     # class DeformNet_v3_extractor(nn.Module):
