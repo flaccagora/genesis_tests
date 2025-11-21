@@ -35,7 +35,7 @@ resume_from = None # "lightning_logs/genesis-tests/184pqxxj/checkpoints/last.ckp
 
 # LR ---------------------------------------------------------------------------
 learning_rate = 5e-3
-use_lr_scheduler = True
+use_lr_scheduler = False
 scheduler_type = "cosine"  # Options: "cosine", "linear", "exponential", "step"
 warmup_epochs = 1
 warmup_start_lr = 1e-6

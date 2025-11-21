@@ -18,8 +18,8 @@ from models import RGB_RotationPredictor, RGBD_RotationPredictor
 from loss.loss import GeodesicLoss
 
 MODEL_REGISTRY: Dict[str, Type[nn.Module]] = {
-    "RGB": RGB_RotationPredictor,
-    "RGBD": RGBD_RotationPredictor
+    "RGB_RotationPredictor": RGB_RotationPredictor,
+    "RGBD_RotationPredictor": RGBD_RotationPredictor
 }
 
 

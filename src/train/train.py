@@ -181,7 +181,18 @@ if __name__ == "__main__":
     apply_overrides(globals())
     config: Dict[str, Any] = {k: globals()[k] for k in config_keys}
 
-    # assert ((pretrained_path == None) and (resume_from == None)) or ((not(pretrained_path == None)) and (not(resume_from == None))), "pretrained_path and resume_from arguments must be both not none to work "
+    def has_tensor_cores():
+        if not torch.cuda.is_available():
+            return False
+        major, minor = torch.cuda.get_device_capability()
+        return major >= 7  # Volta or newer
+
+    # --- Set matmul precision before model + trainer creation ---
+    if has_tensor_cores():
+        torch.set_float32_matmul_precision("medium")
+        print("Enabled TF32 / tensor core matmul precision")
+    else:
+        print("Running without tensor core precision tweaks")
 
     run(config)
 

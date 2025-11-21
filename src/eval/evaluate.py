@@ -5,7 +5,7 @@ import numpy as np
 import genesis as gs  # type: ignore
 
 from data import ImageRotationDataset
-from models import DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor, RotationPredictor
+from models import RGB_RotationPredictor, RGBD_RotationPredictor
 from utils.configurator import apply_overrides
 from utils.rotation import rotate_entity, rot6d_to_rotmat
 from utils.images import show_image, show_images
@@ -149,8 +149,9 @@ if __name__ == "__main__":
     model_path = "trained_models"
     dino = "v3"
     epochs = 10
-    model_class = DeformNet_v3 # DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor
+    model_class = RGB_RotationPredictor # DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    depth = False
     # simul
     entity = "Torus"
     # -----------------------------------------------------------------------------
@@ -159,15 +160,11 @@ if __name__ == "__main__":
     config = {k: globals()[k] for k in config_keys} # will be useful for logging
     # ------------------------------F-----------------------------------------------
 
-    # assert (dino == "v3" and (model_class == DeformNet_v3_extractor or model_class == DeformNet_v3)) or (dino == "v2" and model_class == DeformNet_v2), f"model class {model_class} incompatible with dino {dino}"
     assert feature_analysis or parallel_show, "choose one among feature_analysis or parallel_show"
 
     if parallel_show:
 
         # Model setup
-        # trained_model = model_class(device)
-        # trained_model.to(device)
-        # trained_model.load_state_dict(torch.load(model_path))
         from train import DeformNetLightningModule
         trained_model = DeformNetLightningModule(
             model_variant=model_class,
@@ -183,7 +180,7 @@ if __name__ == "__main__":
 
         transform = transforms.Compose(transform_ops)
 
-        dataset = ImageRotationDataset("datasets/"+dataset, transform=transform, depth=False)
+        dataset = ImageRotationDataset("datasets/"+dataset, transform=transform, depth=depth)
 
         # Simul setup
         scene, cam = gs_simul_setup(entity_name=entity)

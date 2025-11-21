@@ -41,8 +41,7 @@ class GeodesicLoss(nn.Module):
         self.reduction = reduction
 
     def forward(self, input: Tensor, target: Tensor) -> Tensor:
-        with torch.no_grad():
-            input = rot6d_to_rotmat(input)
+        input = rot6d_to_rotmat(input)
 
         R_diffs = input @ target.permute(0, 2, 1)
         # See: https://github.com/pytorch/pytorch/issues/7500#issuecomment-502122839.
