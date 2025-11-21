@@ -13,10 +13,10 @@ num_workers = 5
 img_size = None # if set images are cropped to square of l img_size
 shuffle = True
 rgb = True
-depth = True
+depth = False
 
 # Model ------------------------------------------------------------------------
-model_variant = "RotationPredictor" # v2 v3_ extractor RGBD RotationPredictor
+model_variant = "RGB_RotationPredictor" # RGB_RotationPredictor or RGBD_RotationPredictor
 compile_model = True
 pretrained_path = None
 
