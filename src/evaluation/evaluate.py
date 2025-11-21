@@ -45,7 +45,7 @@ def gs_simul_setup(entity_name):
         scene.add_entity(morph=gs.morphs.Plane())
         pos = (0.5,0.4,0.3)
     if entity_name == "lungs":
-        pos=(0.5, 1, 0.3)
+        pos=(0.5, 0.4, 0.3)
    
     E, nu = 3.e4, 0.45
     rho = 1000.
@@ -106,11 +106,11 @@ def gs_simul_setup(entity_name):
             fov    = 30,
             GUI    = False,
         )
-    elif entity_name == "lungs":
+    elif "lung" in entity_name:
         cam = scene.add_camera(
             res    = (640, 480),
-            pos    = (2.5,-0.5,0.5),
-            lookat = (0.5, 1, 0.3),
+            pos    = (2.5,-2,0.5),
+            lookat = (0.5, 0.4, 0.3),
             fov    = 30,
             GUI    = False,
         )
@@ -183,7 +183,7 @@ if __name__ == "__main__":
 
         transform = transforms.Compose(transform_ops)
 
-        dataset = ImageRotationDataset("datasets/"+dataset, transform=None)
+        dataset = ImageRotationDataset("datasets/"+dataset, transform=transform, depth=False)
 
         # Simul setup
         scene, cam = gs_simul_setup(entity_name=entity)

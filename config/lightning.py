@@ -8,12 +8,12 @@ Usage:
 train_dir = "datasets/data_lungs_20"
 val_dir = None
 test_dir = None
-batch_size = 128
+batch_size = 256
 num_workers = 5
 img_size = None # if set images are cropped to square of l img_size
 shuffle = True
 rgb = True
-depth = False
+depth = True
 
 # Model ------------------------------------------------------------------------
 model_variant = "RotationPredictor" # v2 v3_ extractor RGBD RotationPredictor
@@ -39,7 +39,7 @@ use_lr_scheduler = True
 scheduler_type = "cosine"  # Options: "cosine", "linear", "exponential", "step"
 warmup_epochs = 1
 warmup_start_lr = 1e-6
-cosine_final_lr = 1e-6  # For cosine scheduler
+cosine_final_lr = 1e-5  # For cosine scheduler
 step_size = 10  # For step scheduler (reduce LR every N epochs)
 gamma = 0.05  # For step/exponential scheduler (multiply LR by gamma)
 

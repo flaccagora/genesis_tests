@@ -152,7 +152,7 @@ if __name__ == "__main__":
         for f2 in range(n):
             for f3 in range(n):
                 # angle = torch.tensor([torch.pi * f1 / n, torch.pi * f2 / n, torch.pi * f3 / n])
-                rotation_matrix = generate_random_rotation_matrix()
+                rotation_matrix = generate_random_rotation_matrix(1).squeeze(0)
                 scene.reset()
                 
                 rotate(scene_entity, rotation_matrix, center=None)

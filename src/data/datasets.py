@@ -47,7 +47,8 @@ class ImageRotationDataset(Dataset):
         to_tensor = transforms.ToTensor()
 
         rgb = self.transform(rgb) if self.transform else to_tensor(rgb)
-        depth = to_tensor(depth)
+        reshape = transforms.Resize((224, 224))
+        depth = reshape(to_tensor(depth))
 
         # --- Build RGB-D tensor if requested ---
         if self.rgb and self.depth:
