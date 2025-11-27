@@ -141,7 +141,7 @@ class Dino_RGB_RotationPredictor(nn.Module):
         self.backbone_output_dim = self.backbone.embed_dim  # typically 768 for vitb14
 
         # Project backbone features to hidden_dim if different
-        # self.input_proj = nn.Linear(self.backbone_output_dim, hidden_dim) if self.backbone_output_dim != hidden_dim else nn.Identity()
+        self.input_proj = nn.Linear(self.backbone_output_dim, hidden_dim) if self.backbone_output_dim != hidden_dim else nn.Identity()
 
         # Learnable query token for aggregating information
         self.query_token = nn.Parameter(torch.randn(1, 1, hidden_dim))
@@ -168,7 +168,7 @@ class Dino_RGB_RotationPredictor(nn.Module):
         tokens = self.backbone(x)
 
         # Project to hidden_dim
-        # tokens = self.input_proj(tokens)  # (B, num_tokens, hidden_dim)
+        tokens = self.input_proj(tokens)  # (B, num_tokens, hidden_dim)
 
         # Prepend learnable query token
         query_tokens = self.query_token.expand(B, -1, -1)  # (B, 1, hidden_dim)

@@ -98,6 +98,7 @@ if __name__ == "__main__":
     dataset_path = "datasets/data_lungs_5"
     while True:
         img , rot = get_random_image(dataset_path, depth=False)
+        print(f"image shape: {img.shape}, rotation shape: {rot.shape}")
         show_image(img)
 
     
