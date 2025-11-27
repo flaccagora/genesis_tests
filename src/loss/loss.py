@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch import Tensor
 
-from utils.rotation import rot6d_to_rotmat
+from utils.rotation import rot6d_to_rotmat, rotmat_to_rot6d
 
 
 class GeodesicLoss(nn.Module):
@@ -54,7 +54,15 @@ class GeodesicLoss(nn.Module):
         elif self.reduction == "sum":
             return dists.sum()
         
+class MSELoss(nn.Module):
+    def __init__(self, reduction: str = "mean") -> None:
+        super().__init__()
+        self.reduction = reduction
+        self.mse_loss = nn.MSELoss(reduction=reduction)
 
+    def forward(self, input: Tensor, target: Tensor) -> Tensor:
+        target = rotmat_to_rot6d(target)
+        return self.mse_loss(input, target)
     
 
 # def boh_geodesic_loss(rot_pred_6d, rot_target):

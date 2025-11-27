@@ -15,7 +15,7 @@ from torch.optim.lr_scheduler import (
 )
 
 from models import RGB_RotationPredictor, RGBD_RotationPredictor, Dino_RGB_RotationPredictor
-from loss.loss import GeodesicLoss
+from loss.loss import GeodesicLoss, MSELoss
 
 MODEL_REGISTRY: Dict[str, Type[nn.Module]] = {
     "RGB_RotationPredictor": RGB_RotationPredictor,
@@ -62,7 +62,7 @@ class DeformNetLightningModule(pl.LightningModule):
         if compile_model and hasattr(torch, "compile"):
             self.model = torch.compile(self.model)  # type: ignore[attr-defined]
 
-        self.criterion = GeodesicLoss()
+        self.criterion = MSELoss() # MSELoss() or GeodesicLoss()
         self.lr = lr
 
         # Learning rate scheduler parameters
