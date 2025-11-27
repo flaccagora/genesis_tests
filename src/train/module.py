@@ -14,12 +14,13 @@ from torch.optim.lr_scheduler import (
     SequentialLR,
 )
 
-from models import RGB_RotationPredictor, RGBD_RotationPredictor
+from models import RGB_RotationPredictor, RGBD_RotationPredictor, Dino_RGB_RotationPredictor
 from loss.loss import GeodesicLoss
 
 MODEL_REGISTRY: Dict[str, Type[nn.Module]] = {
     "RGB_RotationPredictor": RGB_RotationPredictor,
-    "RGBD_RotationPredictor": RGBD_RotationPredictor
+    "RGBD_RotationPredictor": RGBD_RotationPredictor,
+    "Dino_RGB_RotationPredictor": Dino_RGB_RotationPredictor
 }
 
 

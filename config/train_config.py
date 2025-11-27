@@ -16,7 +16,7 @@ rgb = True
 depth = False
 
 # Model ------------------------------------------------------------------------
-model_variant = "RGB_RotationPredictor" # RGB_RotationPredictor or RGBD_RotationPredictor
+model_variant = "RGB_RotationPredictor" # Dino_RGB_RotationPredictor RGB_RotationPredictor or RGBD_RotationPredictor
 compile_model = True
 pretrained_path = None
 

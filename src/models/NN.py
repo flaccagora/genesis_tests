@@ -5,6 +5,8 @@ from tqdm import tqdm
 import numpy as np
 from transformers import AutoImageProcessor, AutoModel
 
+from src.models.backbone.dino import Dino
+
 class _BaseRotationPredictor(nn.Module):
     """Base rotation prediction model handling backbone and MLP head."""
 
@@ -110,6 +112,173 @@ class RGBD_RotationPredictor(_BaseRotationPredictor):
 
         return rot_6d
 
+
+class Dino_RGB_RotationPredictor(nn.Module):
+    """Rotation predictor for RGB images using the local Dino backbone (dinov2).
+
+    Uses the Dino class from backbone/dino.py which loads dinov2 from torch hub.
+    Expects 3-channel RGB input. Uses a vanilla Transformer encoder as the prediction head.
+    """
+
+    def __init__(
+        self,
+        hidden_dim: int = 512,
+        input_size: int = 224,
+        dino_model: str = "dinov2_vitb14",
+        freeze_backbone: bool = True,
+        num_transformer_layers: int = 2,
+        num_heads: int = 8,
+        dropout: float = 0.1,
+    ):
+        super().__init__()
+
+        # Initialize local Dino backbone (dinov2)
+        self.backbone = Dino(
+            input_size=input_size,
+            dino_model=dino_model,
+            freeze_backbone=freeze_backbone,
+        )
+        self.backbone_output_dim = self.backbone.embed_dim  # typically 768 for vitb14
+
+        # Project backbone features to hidden_dim if different
+        # self.input_proj = nn.Linear(self.backbone_output_dim, hidden_dim) if self.backbone_output_dim != hidden_dim else nn.Identity()
+
+        # Learnable query token for aggregating information
+        self.query_token = nn.Parameter(torch.randn(1, 1, hidden_dim))
+
+        # Vanilla Transformer encoder as prediction head
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=hidden_dim,
+            nhead=num_heads,
+            dim_feedforward=hidden_dim * 2,
+            dropout=dropout,
+            activation='gelu',
+            batch_first=True,
+        )
+        self.transformer_head = nn.TransformerEncoder(encoder_layer, num_layers=num_transformer_layers)
+
+        # Final projection to 6D rotation representation
+        self.output_proj = nn.Linear(hidden_dim, 6)
+
+    def forward(self, x):
+        """x: (B, 3, H, W) RGB images. Returns (B, 6) 6D rotation representation."""
+        B = x.shape[0]
+
+        # Dino backbone returns (B, num_tokens, embed_dim)
+        tokens = self.backbone(x)
+
+        # Project to hidden_dim
+        # tokens = self.input_proj(tokens)  # (B, num_tokens, hidden_dim)
+
+        # Prepend learnable query token
+        query_tokens = self.query_token.expand(B, -1, -1)  # (B, 1, hidden_dim)
+        tokens = torch.cat([query_tokens, tokens], dim=1)  # (B, 1 + num_tokens, hidden_dim)
+
+        # Pass through Transformer encoder
+        tokens = self.transformer_head(tokens)  # (B, 1 + num_tokens, hidden_dim)
+
+        # Use the query token output as aggregated feature
+        aggregated = tokens[:, 0, :]  # (B, hidden_dim)
+
+        # Project to 6D rotation
+        rot_6d = self.output_proj(aggregated)
+        rot_6d = F.normalize(rot_6d.reshape(-1, 2, 3), dim=-1).reshape(-1, 6)
+        return rot_6d
+
+
+class Dino_RGBD_RotationPredictor(nn.Module):
+    """Rotation predictor for RGBD images using the local Dino backbone (dinov2).
+
+    Uses the Dino class from backbone/dino.py. Depth is encoded with a small
+    conv encoder and fused with RGB before passing to the Dino backbone.
+    Expects 4-channel input: [R, G, B, Depth].
+    """
+
+    def __init__(
+        self,
+        hidden_dim: int = 512,
+        input_size: int = 224,
+        dino_model: str = "dinov2_vitb14",
+        freeze_backbone: bool = True,
+        num_transformer_layers: int = 2,
+        num_heads: int = 8,
+        dropout: float = 0.1,
+    ):
+        super().__init__()
+
+        # Initialize local Dino backbone (dinov2)
+        self.backbone = Dino(
+            input_size=input_size,
+            dino_model=dino_model,
+            freeze_backbone=freeze_backbone,
+        )
+        self.backbone_output_dim = self.backbone.embed_dim
+
+        # Depth preprocessing: project single-channel depth into 3 channels
+        self.depth_encoder = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(16, 32, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(32, 3, kernel_size=3, padding=1),  # Project to 3 channels
+        )
+
+        # Project backbone features to hidden_dim if different
+        self.input_proj = nn.Linear(self.backbone_output_dim, hidden_dim) if self.backbone_output_dim != hidden_dim else nn.Identity()
+
+        # Learnable query token for aggregating information
+        self.query_token = nn.Parameter(torch.randn(1, 1, hidden_dim))
+
+        # Vanilla Transformer encoder as prediction head
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=hidden_dim,
+            nhead=num_heads,
+            dim_feedforward=hidden_dim * 4,
+            dropout=dropout,
+            activation='gelu',
+            batch_first=True,
+        )
+        self.transformer_head = nn.TransformerEncoder(encoder_layer, num_layers=num_transformer_layers)
+
+        # Final projection to 6D rotation representation
+        self.output_proj = nn.Linear(hidden_dim, 6)
+
+    def forward(self, x):
+        """x: (B, 4, H, W) where channels are [R,G,B,Depth]. Returns (B, 6)."""
+        B = x.shape[0]
+
+        # Split RGBD into RGB and Depth
+        rgb = x[:, :3, :, :]  # (B, 3, H, W)
+        depth = x[:, 3:4, :, :]  # (B, 1, H, W)
+
+        # Encode depth to 3 channels and fuse with RGB
+        depth_encoded = self.depth_encoder(depth)  # (B, 3, H, W)
+
+        # Simple fusion: average RGB and depth-encoding (keeps 3 channels)
+        x_input = 0.5 * (rgb + depth_encoded)
+
+        # Dino backbone returns (B, num_tokens, embed_dim)
+        tokens = self.backbone(x_input)
+
+        # Project to hidden_dim
+        tokens = self.input_proj(tokens)  # (B, num_tokens, hidden_dim)
+
+        # Prepend learnable query token
+        query_tokens = self.query_token.expand(B, -1, -1)  # (B, 1, hidden_dim)
+        tokens = torch.cat([query_tokens, tokens], dim=1)  # (B, 1 + num_tokens, hidden_dim)
+
+        # Pass through Transformer encoder
+        tokens = self.transformer_head(tokens)  # (B, 1 + num_tokens, hidden_dim)
+
+        # Use the query token output as aggregated feature
+        aggregated = tokens[:, 0, :]  # (B, hidden_dim)
+
+        # Project to 6D rotation
+        rot_6d = self.output_proj(aggregated)
+        rot_6d = F.normalize(rot_6d.reshape(-1, 2, 3), dim=-1).reshape(-1, 6)
+        return rot_6d
+
+
 if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -124,7 +293,27 @@ if __name__ == "__main__":
     model = RGBD_RotationPredictor(hidden_dim=hidden_dim).to(device)
     dummy_input = torch.randn(2, 4, 224, 224).to(device)
     output = model(dummy_input)
-    print("RGB model output shape:", output.shape)
+    print("RGBD model output shape:", output.shape)
+
+    # Test Dino-based RGB predictor
+    print("\nTesting Dino_RGB_RotationPredictor...")
+    model = Dino_RGB_RotationPredictor(hidden_dim=768).to(device)
+    print(f"model parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
+    # backbone parameters
+    backbone_params = sum(p.numel() for p in model.backbone.parameters())
+    print(f"backbone parameters (frozen): {backbone_params}")
+    # print model structure
+    print(model)
+    dummy_input = torch.randn(2, 3, 224, 224).to(device)
+    output = model(dummy_input)
+    print("Dino RGB model output shape:", output.shape)
+
+    # Test Dino-based RGBD predictor
+    print("\nTesting Dino_RGBD_RotationPredictor...")
+    model = Dino_RGBD_RotationPredictor(hidden_dim=hidden_dim).to(device)
+    dummy_input = torch.randn(2, 4, 224, 224).to(device)
+    output = model(dummy_input)
+    print("Dino RGBD model output shape:", output.shape)
 
 
     # class DeformNet_v3_extractor(nn.Module):
