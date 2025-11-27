@@ -123,7 +123,7 @@ class Dino_RGB_RotationPredictor(nn.Module):
     def __init__(
         self,
         hidden_dim: int = 392,
-        input_size: int = 386,
+        input_size: int = 392,
         dino_model: str = "dinov2_vits14",
         freeze_backbone: bool = True,
         num_transformer_layers: int = 2,
