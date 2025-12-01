@@ -141,11 +141,20 @@ class Dino_RGB_RotationPredictor(nn.Module):
         )
         self.backbone_output_dim = self.backbone.embed_dim  # typically 768 for vitb14
 
+        # Compute number of patch tokens from input size and patch size (14 for dinov2)
+        patch_size = 14
+        num_patches = (input_size // patch_size) ** 2
+        # +1 for CLS token from backbone, +1 for our query token
+        self.num_tokens = num_patches + 1 + 1
+
         # Project backbone features to hidden_dim if different
         self.input_proj = nn.Linear(self.backbone_output_dim, hidden_dim) if self.backbone_output_dim != hidden_dim else nn.Identity()
 
         # Learnable query token for aggregating information
         self.query_token = nn.Parameter(torch.randn(1, 1, hidden_dim))
+
+        # Learnable positional embeddings for all tokens (query + CLS + patches)
+        self.pos_embedding = nn.Parameter(torch.randn(1, self.num_tokens, hidden_dim) * 0.02)
 
         # Vanilla Transformer encoder as prediction head
         encoder_layer = nn.TransformerEncoderLayer(
@@ -174,6 +183,9 @@ class Dino_RGB_RotationPredictor(nn.Module):
         # Prepend learnable query token
         query_tokens = self.query_token.expand(B, -1, -1)  # (B, 1, hidden_dim)
         tokens = torch.cat([query_tokens, tokens], dim=1)  # (B, 1 + num_tokens, hidden_dim)
+
+        # Add positional embeddings
+        tokens = tokens + self.pos_embedding
 
         # Pass through Transformer encoder
         tokens = self.transformer_head(tokens)  # (B, 1 + num_tokens, hidden_dim)
@@ -215,6 +227,12 @@ class Dino_RGBD_RotationPredictor(nn.Module):
         )
         self.backbone_output_dim = self.backbone.embed_dim
 
+        # Compute number of patch tokens from input size and patch size (14 for dinov2)
+        patch_size = 14
+        num_patches = (input_size // patch_size) ** 2
+        # +1 for CLS token from backbone, +1 for our query token
+        self.num_tokens = num_patches + 1 + 1
+
         # Depth preprocessing: project single-channel depth into 3 channels
         self.depth_encoder = nn.Sequential(
             nn.Conv2d(1, 16, kernel_size=3, padding=1),
@@ -229,6 +247,9 @@ class Dino_RGBD_RotationPredictor(nn.Module):
 
         # Learnable query token for aggregating information
         self.query_token = nn.Parameter(torch.randn(1, 1, hidden_dim))
+
+        # Learnable positional embeddings for all tokens (query + CLS + patches)
+        self.pos_embedding = nn.Parameter(torch.randn(1, self.num_tokens, hidden_dim) * 0.02)
 
         # Vanilla Transformer encoder as prediction head
         encoder_layer = nn.TransformerEncoderLayer(
@@ -267,6 +288,9 @@ class Dino_RGBD_RotationPredictor(nn.Module):
         # Prepend learnable query token
         query_tokens = self.query_token.expand(B, -1, -1)  # (B, 1, hidden_dim)
         tokens = torch.cat([query_tokens, tokens], dim=1)  # (B, 1 + num_tokens, hidden_dim)
+
+        # Add positional embeddings
+        tokens = tokens + self.pos_embedding
 
         # Pass through Transformer encoder
         tokens = self.transformer_head(tokens)  # (B, 1 + num_tokens, hidden_dim)
