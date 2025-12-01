@@ -34,7 +34,7 @@ class DeformNetLightningModule(pl.LightningModule):
     def __init__(
         self,
         model_cls: str = "RGB_RotationPredictor",
-        dino_backbone: str = "resnet",
+        backbone: str = "resnet",
         lr: float = 1e-3,
         compile_model: bool = False,
         pretrained_path: Optional[str] = None,
@@ -54,7 +54,7 @@ class DeformNetLightningModule(pl.LightningModule):
 
         self.save_hyperparameters()
         model_cls = MODEL_REGISTRY[model_cls]
-        self.model = model_cls(dino_model=dino_backbone)
+        self.model = model_cls(dino_model=backbone)
 
         if pretrained_path:
             state_dict = torch.load(Path(pretrained_path), map_location="cpu")
