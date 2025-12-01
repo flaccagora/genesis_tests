@@ -137,6 +137,7 @@ class Dino_RGB_RotationPredictor(nn.Module):
             input_size=input_size,
             dino_model=dino_model,
             freeze_backbone=freeze_backbone,
+            normalize_images=False,
         )
         self.backbone_output_dim = self.backbone.embed_dim  # typically 768 for vitb14
 
