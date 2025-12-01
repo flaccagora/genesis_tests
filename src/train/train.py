@@ -105,9 +105,6 @@ def run(config: Dict[str, Any]) -> None:
     monitor_val = config["val_dir"] is not None
     trainer = build_trainer(config, monitor_val=monitor_val)
 
-    if trainer.logger is not False:
-        trainer.logger.watch(lightning_module.model, log="all", log_freq=100)
-
     trainer.fit(
         lightning_module,
         datamodule=data_module,
