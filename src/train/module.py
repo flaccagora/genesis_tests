@@ -166,3 +166,16 @@ class DeformNetLightningModule(pl.LightningModule):
         if hasattr(self.model, "device"):
             self.model.device = str(self.device)
 
+        # Watch model with wandb for gradient and parameter logging
+        if self.logger is not None:
+            try:
+                from pytorch_lightning.loggers import WandbLogger
+                # Handle single logger or list of loggers
+                loggers = self.logger if isinstance(self.logger, list) else [self.logger]
+                for logger in loggers:
+                    if isinstance(logger, WandbLogger):
+                        logger.watch(self.model, log="all", log_freq=100)
+                        break
+            except ImportError:
+                pass
+
