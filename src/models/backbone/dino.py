@@ -3,6 +3,9 @@ from typing import Any, Dict, Optional
 import torch
 import torch.nn.functional as F
 import logging
+import torch.nn as nn
+from transformers import AutoModel
+from src.models.backbone.base import _BaseBackbone
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +14,7 @@ class Dino(torch.nn.Module):
         self,
         input_size: int = 224,
         repo_or_dir: str = "facebookresearch/dinov2",
-        dino_model: str = "dinov2_vitb14",
+        dino_model: str = "dinov2_vits14",
         source: str = "github",
         backbone_kwargs: Optional[Dict[str, Any]] = None,
         normalize_images: bool = True,
@@ -127,7 +130,6 @@ class Dino(torch.nn.Module):
         if self.prenorm_features:
             self.backbone.norm = torch.nn.Identity()
 
-
 class DinoForMasks(torch.nn.Module):
     def __init__(
         self,
@@ -139,6 +141,56 @@ class DinoForMasks(torch.nn.Module):
 
     def forward(self, image, mask):
         return self.backbone.forward(mask)
+
+class DinoV2Backbone(_BaseBackbone):
+    """DINOv2 backbone wrapper using the local Dino class from backbone/dino.py."""
+
+    def __init__(
+        self,
+        input_size: int = 224,
+        dino_model: str = "dinov2_vits14",
+        freeze_backbone: bool = True,
+        normalize_images: bool = True,
+    ):
+        super().__init__(freeze_backbone=freeze_backbone)
+        self.backbone = Dino(
+            input_size=input_size,
+            dino_model=dino_model,
+            freeze_backbone=freeze_backbone,
+            normalize_images=normalize_images,
+        )
+        self.embed_dim = self.backbone.embed_dim
+        self.patch_size = 14
+        self.input_size = input_size
+
+    def forward(self, x) -> torch.Tensor:
+        """Returns (B, num_tokens, embed_dim) including CLS token."""
+        return self.backbone(x)
+
+class DinoV3Backbone(_BaseBackbone):
+    """DINOv3 backbone wrapper using HuggingFace transformers."""
+
+    def __init__(
+        self,
+        pretrained_model_name: str = "facebook/dinov3-vitB16-pretrain-lvd1689m",
+        freeze_backbone: bool = True,
+    ):
+        super().__init__(freeze_backbone=freeze_backbone)
+        self.backbone = AutoModel.from_pretrained(pretrained_model_name)
+        self.embed_dim = 768  # ViT-B output dimension
+        self.patch_size = 16
+
+        if freeze_backbone:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
+            self.backbone.eval()
+
+    def forward(self, x) -> torch.Tensor:
+        """Returns (B, num_tokens, embed_dim) from last_hidden_state."""
+        with torch.no_grad() if self.freeze_backbone else torch.enable_grad():
+            output = self.backbone(x)
+        return output.last_hidden_state
+
 
 if __name__ == "__main__":
     model = Dino()

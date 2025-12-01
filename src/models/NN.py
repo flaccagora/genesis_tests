@@ -2,38 +2,67 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from tqdm import tqdm
-import numpy as np
-from transformers import AutoImageProcessor, AutoModel
-
-from src.models.backbone.dino import Dino
+from src.models.backbone.dino import Dino, DinoV2Backbone, DinoV3Backbone
+from src.models.backbone.resnet import ResNet50Backbone
 
 class _BaseRotationPredictor(nn.Module):
-    """Base rotation prediction model handling backbone and MLP head."""
+    """Base rotation prediction model with configurable backbone and MLP head.
+    
+    Args:
+        backbone_type: One of 'dinov2', 'dinov3', or 'resnet'
+        hidden_dim: Hidden dimension for the MLP head
+        input_size: Input image size (used for dinov2)
+        dino_model: DINOv2 model variant (e.g., 'dinov2_vitb14', 'dinov2_vits14')
+        freeze_backbone: Whether to freeze backbone weights
+    """
 
-    def __init__(self, backbone_dim=768, hidden_dim=512):
+    def __init__(
+        self,
+        backbone_type: str = 'dinov2',
+        hidden_dim: int = 512,
+        input_size: int = 224,
+        dino_model: str = "dinov2_vitb14",
+        freeze_backbone: bool = True,
+    ):
         super().__init__()
+        self.backbone_type = backbone_type
 
-        # Try to load DinoV3, fallback to ResNet50 if not available
-        try:
-            pretrained_model_name = "facebook/dinov3-vitB16-pretrain-lvd1689m"
-            # self.processor = AutoImageProcessor.from_pretrained(pretrained_model_name)
-            self.backbone = AutoModel.from_pretrained(pretrained_model_name)
+        # Initialize backbone based on type
+        if backbone_type == 'dinov2':
+            self.backbone = DinoV2Backbone(
+                input_size=input_size,
+                dino_model=dino_model,
+                freeze_backbone=freeze_backbone,
+                normalize_images=False,
+            )
+        elif backbone_type == 'dinov3':
+            self.backbone = DinoV3Backbone(freeze_backbone=freeze_backbone)
+        elif backbone_type == 'resnet':
+            self.backbone = ResNet50Backbone(freeze_backbone=freeze_backbone)
+        else:
+            raise ValueError(f"Unknown backbone_type: {backbone_type}. Choose from 'dinov2', 'dinov3', 'resnet'.")
 
-            for param in self.backbone.parameters():
-                param.requires_grad = False
-            self.backbone_output_dim = 768
-            self.backbone_type = 'dinov3'
-        except Exception:
-            print("DinoV3 not available, using ResNet50 instead")
-            import torchvision.models as models
-            resnet = models.resnet50(pretrained=True)
-            self.backbone = nn.Sequential(*list(resnet.children())[:-1])
-            self.backbone.eval()
-            for param in self.backbone.parameters():
-                param.requires_grad = False
-            self.backbone_output_dim = 2048
-            self.backbone_type = 'resnet50'
+        self.backbone_output_dim = self.backbone.embed_dim
 
+
+class RGB_RotationPredictor(_BaseRotationPredictor):
+    """Rotation predictor for RGB images (expects 3-channel input)."""
+
+    def __init__(
+        self,
+        backbone_type: str = 'dinov2',
+        hidden_dim: int = 512,
+        input_size: int = 224,
+        dino_model: str = "dinov2_vits14",
+        freeze_backbone: bool = True,
+    ):
+        super().__init__(
+            backbone_type=backbone_type,
+            hidden_dim=hidden_dim,
+            input_size=input_size,
+            dino_model=dino_model,
+            freeze_backbone=freeze_backbone,
+        )
         # Prediction head: MLP (outputs 6D rotation representation)
         self.head = nn.Sequential(
             nn.Linear(self.backbone_output_dim, hidden_dim),
@@ -45,31 +74,10 @@ class _BaseRotationPredictor(nn.Module):
             nn.Linear(hidden_dim, 6),
         )
 
-    def _extract_features(self, x_input):
-        """Run backbone and do a small postprocessing to return a (B, D) feature tensor."""
-        with torch.no_grad():
-            if self.backbone_type == 'dinov3':
-                features = self.backbone(x_input).last_hidden_state
-            else:  # ResNet50
-                features = self.backbone(x_input)
-
-        # Global average pooling if needed
-        if features.dim() > 2:
-            features = torch.mean(features, dim=1)
-
-        return features
-
-
-class RGB_RotationPredictor(_BaseRotationPredictor):
-    """Rotation predictor for RGB images (expects 3-channel input)."""
-
-    def __init__(self, backbone_dim=768, hidden_dim=512):
-        super().__init__(backbone_dim=backbone_dim, hidden_dim=hidden_dim)
-
     def forward(self, x):
         """x: (B, 3, H, W) RGB images. Returns (B, 6) 6D rotation representation."""
-        x_input = x
-        features = self._extract_features(x_input)
+        tokens = self.backbone(x)  # (B, num_tokens, embed_dim)
+        features = tokens.mean(dim=1)  # (B, embed_dim)
         rot_6d = self.head(features)
         rot_6d = F.normalize(rot_6d.reshape(-1, 2, 3), dim=-1).reshape(-1, 6)
         return rot_6d
@@ -79,11 +87,35 @@ class RGBD_RotationPredictor(_BaseRotationPredictor):
     """Rotation predictor for RGBD images (expects 4-channel input: RGB + Depth).
 
     Depth is encoded with a small conv encoder and fused with RGB to produce a
-    3-channel input compatible with DinoV3/ResNet backbones.
+    3-channel input compatible with all backbones.
     """
 
-    def __init__(self, backbone_dim=768, hidden_dim=512):
-        super().__init__(backbone_dim=backbone_dim, hidden_dim=hidden_dim)
+    def __init__(
+        self,
+        backbone_type: str = 'dinov2',
+        hidden_dim: int = 512,
+        input_size: int = 224,
+        dino_model: str = "dinov2_vitb14",
+        freeze_backbone: bool = True,
+    ):
+        super().__init__(
+            backbone_type=backbone_type,
+            hidden_dim=hidden_dim,
+            input_size=input_size,
+            dino_model=dino_model,
+            freeze_backbone=freeze_backbone,
+        )
+
+        # Prediction head: MLP (outputs 6D rotation representation)
+        self.head = nn.Sequential(
+            nn.Linear(self.backbone_output_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_dim, 6),
+        )
 
         # Depth preprocessing: project single-channel depth into 3 channels
         self.depth_encoder = nn.Sequential(
@@ -106,7 +138,8 @@ class RGBD_RotationPredictor(_BaseRotationPredictor):
         # Simple fusion: average RGB and depth-encoding (keeps 3 channels)
         x_input = 0.5 * (rgb + depth_encoded)
 
-        features = self._extract_features(x_input)
+        tokens = self.backbone(x_input)  # (B, num_tokens, embed_dim)
+        features = tokens.mean(dim=1)  # (B, embed_dim)
         rot_6d = self.head(features)
         rot_6d = F.normalize(rot_6d.reshape(-1, 2, 3), dim=-1).reshape(-1, 6)
 
@@ -309,18 +342,28 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     hidden_dim = 512
 
-    # instantiate an RGB-only predictor by default
-    model = RGB_RotationPredictor(hidden_dim=hidden_dim).to(device)
+    # Test RGB predictor with DINOv2 backbone (default)
+    print("Testing RGB_RotationPredictor with DINOv2 backbone...")
+    model = RGB_RotationPredictor(backbone_type='dinov2', hidden_dim=hidden_dim).to(device)
     dummy_input = torch.randn(2, 3, 224, 224).to(device)
     output = model(dummy_input)
-    print("RGB model output shape:", output.shape)
+    print("RGB DINOv2 model output shape:", output.shape)
 
-    model = RGBD_RotationPredictor(hidden_dim=hidden_dim).to(device)
+    # Test RGBD predictor with DINOv2 backbone
+    print("\nTesting RGBD_RotationPredictor with DINOv2 backbone...")
+    model = RGBD_RotationPredictor(backbone_type='dinov2', hidden_dim=hidden_dim).to(device)
     dummy_input = torch.randn(2, 4, 224, 224).to(device)
     output = model(dummy_input)
-    print("RGBD model output shape:", output.shape)
+    print("RGBD DINOv2 model output shape:", output.shape)
 
-    # Test Dino-based RGB predictor
+    # Test RGB predictor with ResNet backbone
+    print("\nTesting RGB_RotationPredictor with ResNet backbone...")
+    model = RGB_RotationPredictor(backbone_type='resnet', hidden_dim=hidden_dim).to(device)
+    dummy_input = torch.randn(2, 3, 224, 224).to(device)
+    output = model(dummy_input)
+    print("RGB ResNet model output shape:", output.shape)
+
+    # Test Dino-based RGB predictor (Transformer head)
     print("\nTesting Dino_RGB_RotationPredictor...")
     model = Dino_RGB_RotationPredictor(hidden_dim=768).to(device)
     print(f"model parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad)}")
@@ -333,7 +376,7 @@ if __name__ == "__main__":
     output = model(dummy_input)
     print("Dino RGB model output shape:", output.shape)
 
-    # Test Dino-based RGBD predictor
+    # Test Dino-based RGBD predictor (Transformer head)
     print("\nTesting Dino_RGBD_RotationPredictor...")
     model = Dino_RGBD_RotationPredictor(hidden_dim=hidden_dim).to(device)
     dummy_input = torch.randn(2, 4, 224, 224).to(device)
