@@ -227,6 +227,9 @@ if __name__ == "__main__":
             device=device,
         )
 
+        from loss.loss import GeodesicLoss, MSELoss
+        criterion = MSELoss()
+
         # Build transforms consistent with training datamodule
         transform = build_transforms(img_size=img_size)
 
@@ -248,6 +251,8 @@ if __name__ == "__main__":
         while True:
             image, rotation = get_random_image(dataset)
             pred_rotation = get_predicted_rotation(image, trained_model, device)
+            print(f"Loss (datapoint): {criterion(pred_rotation.to(device), rotation.to(device))}")
+
             # Convert 6D rotation representation to 3x3 rotation matrix
             pred_rotation = rot6d_to_rotmat(pred_rotation.unsqueeze(0)).squeeze(0)
 
