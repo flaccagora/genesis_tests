@@ -14,7 +14,7 @@ from utils.rotation import rotate_entity, rot6d_to_rotmat
 from utils.images import show_image, show_images
 from torchvision import transforms
 
-def gs_simul_setup(entity_name):
+def gs_simul_setup(entity_name, show_viewer=True):
     ########################## init ##########################
     gs.init(seed=0, precision='32', logging_level='info')
 
@@ -40,7 +40,7 @@ def gs_simul_setup(entity_name):
         vis_options=gs.options.VisOptions(
             show_world_frame=False,
         ),
-        show_viewer=False,
+        show_viewer=show_viewer,
     )
 
     ########################## entities ##########################
@@ -214,6 +214,7 @@ if __name__ == "__main__":
     rgb = True
     # simul
     entity = "Torus"
+    show_viewer = True
     # -----------------------------------------------------------------------------
     config_keys = [k for k,v in globals().items() if not k.startswith('_') and isinstance(v, (int, float, bool, str, type(None)))]
     apply_overrides(globals()) # overrides from command line or config file
@@ -242,7 +243,7 @@ if __name__ == "__main__":
         dataset = ImageRotationDataset("datasets/"+dataset, transform=transform, rgb=rgb, depth=depth)
 
         # Simul setup
-        scene, cam = gs_simul_setup(entity_name=entity)
+        scene, cam = gs_simul_setup(entity_name=entity, show_viewer=show_viewer)
         i = 0
         if entity == "dragon" or entity == "lungs":
             i = -1
@@ -271,7 +272,10 @@ if __name__ == "__main__":
             rotate(torus_fem_0,rotation)
             rotate(torus_fem_1,pred_rotation)
             scene.step()
-            show_images(cam.render()[0])
+            if show_viewer:
+                input("Press Enter to continue...")
+            else:
+                show_images(cam.render()[0])
 
     if feature_analysis:
         def feature_extraction_analysis(image1, image2):
