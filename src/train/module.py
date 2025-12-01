@@ -177,5 +177,5 @@ class DeformNetLightningModule(pl.LightningModule):
                         logger.watch(self.model, log="all", log_freq=100)
                         break
             except ImportError:
-                pass
+                raise ImportError("WandbLogger not found. ")
 
