@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+from typing import Optional
+
 import torch
 import numpy as np
 import genesis as gs  # type: ignore
 
 from data import ImageRotationDataset
-from models import RGB_RotationPredictor, RGBD_RotationPredictor
+from models import RGB_RotationPredictor, RGBD_RotationPredictor, Dino_RGB_RotationPredictor
+from train import DeformNetLightningModule
 from utils.configurator import apply_overrides
 from utils.rotation import rotate_entity, rot6d_to_rotmat
 from utils.images import show_image, show_images
+from torchvision import transforms
 
 def gs_simul_setup(entity_name):
     ########################## init ##########################
@@ -128,15 +132,66 @@ def get_random_image(dataset):
     image, rotation = dataset[idx]
     return image, rotation
 
-def get_predicted_rotation(image, trained_model):
-    # image_pt = torch.tensor([image], dtype=torch.float16).to("cuda")
+def get_predicted_rotation(image, trained_model, device):
+    """Get predicted rotation from the model.
+    
+    Args:
+        image: Input image tensor
+        trained_model: The Lightning module with the trained model
+        device: Device to run inference on
+    
+    Returns:
+        Predicted rotation tensor
+    """
     print(image.shape)
     with torch.no_grad():
-        predicted_rotation = trained_model(image.unsqueeze(0))
-    return predicted_rotation.squeeze(0)
+        image_batch = image.unsqueeze(0).to(device)
+        predicted_rotation = trained_model(image_batch)
+    return predicted_rotation.squeeze(0).cpu()
 
 """REMEMBER TO ALWAYS ROTATE FROM A REFERENCE FRAME POSITION
 OTHERWISE THE ROTATION WILL ACCUMULATE ERRORS"""
+
+
+def build_transforms(img_size: int = 224):
+    """Build transforms consistent with training datamodule."""
+    transform_ops = [
+        transforms.ToTensor(),
+        transforms.Resize((img_size, img_size)),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                            std=[0.229, 0.224, 0.225])
+    ]
+    return transforms.Compose(transform_ops)
+
+
+def load_model_from_checkpoint(
+    checkpoint_path: str,
+    model_variant: str = "RGB_RotationPredictor",
+    device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+) -> DeformNetLightningModule:
+    """Load model from Lightning checkpoint, consistent with training scripts.
+    
+    Args:
+        checkpoint_path: Path to the Lightning checkpoint (.ckpt file)
+        model_variant: Model variant name (e.g., "RGB_RotationPredictor", "RGBD_RotationPredictor", "Dino_RGB_RotationPredictor")
+        device: Device to load the model on
+    
+    Returns:
+        Loaded DeformNetLightningModule in eval mode
+    """
+    # Load the model from checkpoint - this restores all hyperparameters and weights
+    lightning_module = DeformNetLightningModule.load_from_checkpoint(
+        checkpoint_path,
+        map_location=device,
+        model_variant=model_variant,  # Override if needed, otherwise uses saved hparams
+    )
+    
+    # Move to device and set to evaluation mode
+    lightning_module = lightning_module.to(device)
+    lightning_module.eval()
+    
+    return lightning_module
+
 
 if __name__ == "__main__":
 
@@ -145,42 +200,37 @@ if __name__ == "__main__":
     dataset = "dataset"
     parallel_show = False
     feature_analysis = True
+    img_size = 224
     # model
-    model_path = "trained_models"
-    dino = "v3"
-    epochs = 10
-    model_class = RGB_RotationPredictor # DeformNet_v2, DeformNet_v3, DeformNet_v3_extractor
+    checkpoint_path: Optional[str] = None  # Path to Lightning checkpoint (.ckpt)
+    model_variant = "RGB_RotationPredictor"  # Options: "RGB_RotationPredictor", "RGBD_RotationPredictor", "Dino_RGB_RotationPredictor"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     depth = False
+    rgb = True
     # simul
     entity = "Torus"
     # -----------------------------------------------------------------------------
-    config_keys = [k for k,v in globals().items() if not k.startswith('_') and isinstance(v, (int, float, bool, str))]
+    config_keys = [k for k,v in globals().items() if not k.startswith('_') and isinstance(v, (int, float, bool, str, type(None)))]
     apply_overrides(globals()) # overrides from command line or config file
     config = {k: globals()[k] for k in config_keys} # will be useful for logging
-    # ------------------------------F-----------------------------------------------
+    # -----------------------------------------------------------------------------
 
     assert feature_analysis or parallel_show, "choose one among feature_analysis or parallel_show"
 
     if parallel_show:
+        assert checkpoint_path is not None, "checkpoint_path must be provided for parallel_show mode"
 
-        # Model setup
-        from train import DeformNetLightningModule
-        trained_model = DeformNetLightningModule(
-            model_variant=model_class,
-            pretrained_path=model_path,
+        # Model setup - consistent with Lightning training
+        trained_model = load_model_from_checkpoint(
+            checkpoint_path=checkpoint_path,
+            model_variant=model_variant,
+            device=device,
         )
 
-        from torchvision import transforms
-        transform_ops = [transforms.ToTensor(),
-                            transforms.Resize((224, 224)),
-                            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                std=[0.229, 0.224, 0.225])
-                            ]
+        # Build transforms consistent with training datamodule
+        transform = build_transforms(img_size=img_size)
 
-        transform = transforms.Compose(transform_ops)
-
-        dataset = ImageRotationDataset("datasets/"+dataset, transform=transform, depth=depth)
+        dataset = ImageRotationDataset("datasets/"+dataset, transform=transform, rgb=rgb, depth=depth)
 
         # Simul setup
         scene, cam = gs_simul_setup(entity_name=entity)
@@ -197,9 +247,8 @@ if __name__ == "__main__":
 
         while True:
             image, rotation = get_random_image(dataset)
-            pred_rotation = get_predicted_rotation(image,trained_model)
-            # if model_class == RotationPredictor:
-            #     print("converting 6D to 3x3mat")
+            pred_rotation = get_predicted_rotation(image, trained_model, device)
+            # Convert 6D rotation representation to 3x3 rotation matrix
             pred_rotation = rot6d_to_rotmat(pred_rotation.unsqueeze(0)).squeeze(0)
 
             print("rotation ", rotation,"\npredicted rotation ", pred_rotation)
@@ -217,7 +266,11 @@ if __name__ == "__main__":
         def feature_extraction_analysis(image1, image2):
             images = torch.cat((image1.unsqueeze(0),image2.unsqueeze(0)))
             
-            model = DeformNet_v3(device)
+            # Use Dino_RGB_RotationPredictor for feature extraction analysis
+            model = Dino_RGB_RotationPredictor()
+            model = model.to(device)
+            model.eval()
+            
             patch_size = model.dino.config.patch_size
 
             inputs = model.processor(images=images, return_tensors="pt",do_rescale=False).to(device)
@@ -245,7 +298,7 @@ if __name__ == "__main__":
             show_images(*l)
             return
         
-        print(f"showing pairs of images and image features extracted from dino {dino}")
+        print(f"showing pairs of images and image features extracted from Dino_RGB_RotationPredictor")
 
         dataset = ImageRotationDataset("datasets/"+dataset)
 
@@ -254,5 +307,3 @@ if __name__ == "__main__":
             image1, rotation = get_random_image(dataset)
             image2, rotation = get_random_image(dataset)
             feature_extraction_analysis(image1, image2)
-
-        
