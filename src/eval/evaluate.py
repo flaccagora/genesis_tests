@@ -167,13 +167,16 @@ def build_transforms(img_size: int = 224):
 def load_model_from_checkpoint(
     checkpoint_path: str,
     model_cls: str = "RGB_RotationPredictor",
+    dino_backbone: str = "dinov2_vitb14",
     device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
 ) -> DeformNetLightningModule:
     """Load model from Lightning checkpoint, consistent with training scripts.
     
     Args:
         checkpoint_path: Path to the Lightning checkpoint (.ckpt file)
-        model_variant: Model variant name (e.g., "RGB_RotationPredictor", "RGBD_RotationPredictor", "Dino_RGB_RotationPredictor")
+        model_cls: Model variant name (e.g., "RGB_RotationPredictor", "RGBD_RotationPredictor", "Dino_RGB_RotationPredictor")
+        dino_backbone: Backbone type. If starts with 'dinov2' uses DINOv2, if 'dinov3' uses DINOv3, 
+                      otherwise uses ResNet50. Examples: 'dinov2_vitb14', 'dinov2_vits14', 'dinov3', 'resnet'
         device: Device to load the model on
     
     Returns:
@@ -183,7 +186,8 @@ def load_model_from_checkpoint(
     lightning_module = DeformNetLightningModule.load_from_checkpoint(
         checkpoint_path,
         map_location=device,
-        model_cls=model_cls,  # Override if needed, otherwise uses saved hparams
+        model_cls=model_cls,
+        dino_backbone=dino_backbone,
     )
     
     # Move to device and set to evaluation mode
@@ -225,6 +229,7 @@ if __name__ == "__main__":
         trained_model = load_model_from_checkpoint(
             checkpoint_path=checkpoint_path,
             model_cls=model_cls,
+            dino_backbone=backbone,
             device=device,
         )
 
