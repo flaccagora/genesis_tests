@@ -35,6 +35,7 @@ checkpoint_name = "deformnet-{epoch:02d}-{val_loss:.4f}"
 resume_from = None # "lightning_logs/genesis-tests/184pqxxj/checkpoints/last.ckpt"
 
 # LR ---------------------------------------------------------------------------
+criterion = "mse"  # Options: "mse", "geodesic"
 learning_rate = 5e-3
 use_lr_scheduler = False
 scheduler_type = "cosine"  # Options: "cosine", "linear", "exponential", "step"

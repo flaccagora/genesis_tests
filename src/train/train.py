@@ -90,6 +90,7 @@ def run(config: Dict[str, Any]) -> None:
     lightning_module = DeformNetLightningModule(
         model_cls=config["model_cls"],
         backbone=config["backbone"],
+        criterion=config["criterion"],
         lr=config["learning_rate"],
         compile_model=config["compile_model"],
         pretrained_path=config["pretrained_path"],
@@ -143,6 +144,7 @@ if __name__ == "__main__":
     pretrained_path: Optional[str] = None
 
     # Learning Rate Scheduling and Warmup
+    criterion = "mse"  # Options: "mse", "mae"
     use_lr_scheduler = True
     scheduler_type = "cosine"  # Options: "cosine", "linear", "exponential", "step"
     warmup_epochs = 2

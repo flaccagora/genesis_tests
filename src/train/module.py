@@ -23,6 +23,11 @@ MODEL_REGISTRY: Dict[str, Type[nn.Module]] = {
     "Dino_RGB_RotationPredictor": Dino_RGB_RotationPredictor
 }
 
+CRITERION_REGISTRY: Dict[str, Type[nn.Module]] = {
+    "mse": MSELoss,
+    "geodesic": GeodesicLoss,
+}
+
 
 class DeformNetLightningModule(pl.LightningModule):
     """
@@ -35,6 +40,7 @@ class DeformNetLightningModule(pl.LightningModule):
         self,
         model_cls: str = "RGB_RotationPredictor",
         backbone: str = "resnet",
+        criterion: str = "mse",
         lr: float = 1e-3,
         compile_model: bool = False,
         pretrained_path: Optional[str] = None,
@@ -63,7 +69,7 @@ class DeformNetLightningModule(pl.LightningModule):
         if compile_model and hasattr(torch, "compile"):
             self.model = torch.compile(self.model)  # type: ignore[attr-defined]
 
-        self.criterion = MSELoss() # MSELoss() or GeodesicLoss()
+        self.criterion = CRITERION_REGISTRY[criterion]()
         self.lr = lr
 
         # Learning rate scheduler parameters
