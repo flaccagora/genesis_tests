@@ -11,7 +11,7 @@ rgb = True
 img_size = 224
 # model
 model_cls = "RGB_RotationPredictor"  # Options: "RGB_RotationPredictor", "RGBD_RotationPredictor", "Dino_RGB_RotationPredictor"
-backbone = "dinov2_vitb14"  # Options: 'dinov2_vitb14', 'dinov3_vitb14', 'resnet'
-checkpoint_path = "lightning_logs/genesis-tests/e4vljsfc/checkpoints/last.ckpt"  # Path to Lightning checkpoint (.ckpt)
+backbone = "dinov2_vits14"  # Options: 'dinov2_vitb14', 'dinov3', 'resnet'
+checkpoint_path = "lightning_logs/genesis-tests/bx9zb6lt/checkpoints/last.ckpt"  # Path to Lightning checkpoint (.ckpt)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # -----------------------------------------------------------------------------

@@ -17,7 +17,7 @@ depth = False
 
 # Model ------------------------------------------------------------------------
 model_cls = "RGB_RotationPredictor" # Dino_RGB_RotationPredictor RGB_RotationPredictor or RGBD_RotationPredictor
-backbone = "dinov2_vitb14" 
+backbone = "dinov2_vits14" # dinov2_vitb14 dinov3 resnet
 compile_model = True
 pretrained_path = None
 
