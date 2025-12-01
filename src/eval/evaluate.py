@@ -166,7 +166,7 @@ def build_transforms(img_size: int = 224):
 
 def load_model_from_checkpoint(
     checkpoint_path: str,
-    model_variant: str = "RGB_RotationPredictor",
+    model_cls: str = "RGB_RotationPredictor",
     device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
 ) -> DeformNetLightningModule:
     """Load model from Lightning checkpoint, consistent with training scripts.
@@ -183,7 +183,7 @@ def load_model_from_checkpoint(
     lightning_module = DeformNetLightningModule.load_from_checkpoint(
         checkpoint_path,
         map_location=device,
-        model_variant=model_variant,  # Override if needed, otherwise uses saved hparams
+        model_cls=model_cls,  # Override if needed, otherwise uses saved hparams
     )
     
     # Move to device and set to evaluation mode
@@ -203,7 +203,8 @@ if __name__ == "__main__":
     img_size = 224
     # model
     checkpoint_path: Optional[str] = None  # Path to Lightning checkpoint (.ckpt)
-    model_variant = "RGB_RotationPredictor"  # Options: "RGB_RotationPredictor", "RGBD_RotationPredictor", "Dino_RGB_RotationPredictor"
+    model_cls = "RGB_RotationPredictor"  # Options: "RGB_RotationPredictor", "RGBD_RotationPredictor", "Dino_RGB_RotationPredictor"
+    backbone = "dinov2_vitb14"  # Options: 'dinov2_vitb14', 'dinov3_vitb14', 'resnet'
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     depth = False
     rgb = True
@@ -223,7 +224,7 @@ if __name__ == "__main__":
         # Model setup - consistent with Lightning training
         trained_model = load_model_from_checkpoint(
             checkpoint_path=checkpoint_path,
-            model_variant=model_variant,
+            model_cls=model_cls,
             device=device,
         )
 

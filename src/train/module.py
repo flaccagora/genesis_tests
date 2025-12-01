@@ -33,7 +33,8 @@ class DeformNetLightningModule(pl.LightningModule):
 
     def __init__(
         self,
-        model_variant: str = "v3",
+        model_cls: str = "RGB_RotationPredictor",
+        dino_backbone: str = "resnet",
         lr: float = 1e-3,
         compile_model: bool = False,
         pretrained_path: Optional[str] = None,
@@ -48,12 +49,12 @@ class DeformNetLightningModule(pl.LightningModule):
     ) -> None:
         super().__init__()
 
-        if model_variant not in MODEL_REGISTRY:
-            raise ValueError(f"Unsupported model_variant='{model_variant}'. Options: {list(MODEL_REGISTRY)}")
+        if model_cls not in MODEL_REGISTRY:
+            raise ValueError(f"Unsupported model_cls='{model_cls}'. Options: {list(MODEL_REGISTRY)}")
 
         self.save_hyperparameters()
-        model_cls = MODEL_REGISTRY[model_variant]
-        self.model = model_cls()
+        model_cls = MODEL_REGISTRY[model_cls]
+        self.model = model_cls(dino_model=dino_backbone)
 
         if pretrained_path:
             state_dict = torch.load(Path(pretrained_path), map_location="cpu")

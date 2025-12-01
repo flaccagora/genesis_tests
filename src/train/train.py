@@ -88,7 +88,8 @@ def run(config: Dict[str, Any]) -> None:
     )
 
     lightning_module = DeformNetLightningModule(
-        model_variant=config["model_variant"],
+        model_cls=config["model_cls"],
+        backbone=config["backbone"],
         lr=config["learning_rate"],
         compile_model=config["compile_model"],
         pretrained_path=config["pretrained_path"],
@@ -135,7 +136,8 @@ if __name__ == "__main__":
     depth = False
 
     # Model
-    model_variant = "v3"
+    model_cls = "NN"  # Options: "NN", "DeformNet"
+    backbone = "dinov2_vitb14" 
     learning_rate = 1e-3
     compile_model = False
     pretrained_path: Optional[str] = None
