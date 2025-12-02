@@ -406,10 +406,10 @@ def run_mesh_evaluation(
         distances = compute_vertex_distances(vertices_gt, vertices_pred)
         all_distances.append(distances)
         
-        metrics = compute_mesh_metrics(vertices_gt, vertices_pred, gt_rotation, pred_6d)
+        metrics = compute_mesh_metrics(vertices_gt, vertices_pred, gt_rotation.to(device), pred_6d.to(device))
         all_metrics.append(metrics)
         
-        if verbose and (idx + 1) % 10 == 0:
+        if verbose and (idx + 1) % 1000 == 0:
             print(f"Evaluated {idx + 1}/{n_samples} samples, "
                   f"current mean dist: {metrics.mean_vertex_distance:.6f}")
     
@@ -578,7 +578,7 @@ if __name__ == "__main__":
         
         # Optionally save results
         import json
-        results_path = f"mesh_eval_results_{entity}_{dataset}.json"
+        results_path = f"mesh_eval_results_{entity}_{dataset}_{checkpoint_path}.json"
         with open(results_path, 'w') as f:
             json.dump(aggregated_metrics, f, indent=2)
         print(f"Results saved to: {results_path}")
