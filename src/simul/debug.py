@@ -59,12 +59,12 @@ def build_scene(entity_name: str):
 def main(entity_name: str = "lungs") -> None:
     scene, cam = build_scene(entity_name)
 
-    # import IPython
-
-    # IPython.embed()  # noqa: T100
-
+    import IPython
 
     entity = scene.entities[1]
+    IPython.embed()  # noqa: T100
+
+
     while True:
         R = generate_random_rotation_matrix()
         print(R)
