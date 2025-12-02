@@ -578,7 +578,8 @@ if __name__ == "__main__":
         
         # Optionally save results
         import json
-        model_json = {"depth":depth, "model_cls":model_cls, "backbone": backbone}
+        model_json = {"depth":depth, "model_cls":model_cls, "backbone": backbone,
+        "checkpoint_path": checkpoint_path}
         all = {**model_json, **aggregated_metrics}
         results_path = f"results/mesh_eval_results_{entity}_{dataset}.json"
         with open(results_path, 'w') as f:
