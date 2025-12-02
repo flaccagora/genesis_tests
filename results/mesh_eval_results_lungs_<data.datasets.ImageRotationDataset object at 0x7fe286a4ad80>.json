@@ -1,0 +1,13 @@
+{
+  "mean_vertex_distance": 0.028959766030311584,
+  "max_vertex_distance": 0.3225365877151489,
+  "min_vertex_distance": 6.185288839333225e-06,
+  "std_vertex_distance": 0.02104160003364086,
+  "rmse": 0.0357968844473362,
+  "mse": 0.013769526568500624,
+  "geodesic": 0.14932254441123222,
+  "total_samples": 8000,
+  "total_vertices_evaluated": 11912000,
+  "per_sample_mean_distance_avg": 0.028959764638188064,
+  "per_sample_mean_distance_std": 0.014019194845796664
+}

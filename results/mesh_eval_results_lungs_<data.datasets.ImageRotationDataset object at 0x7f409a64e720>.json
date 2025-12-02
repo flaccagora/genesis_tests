@@ -1,0 +1,15 @@
+{
+  "depth": true,
+  "model_cls": "RGBD_RotationPredictor",
+  "mean_vertex_distance": 0.04328048601746559,
+  "max_vertex_distance": 0.3002226948738098,
+  "min_vertex_distance": 0.00014333116996567696,
+  "std_vertex_distance": 0.030426349490880966,
+  "rmse": 0.05290517210960388,
+  "mse": 0.013691901919082738,
+  "geodesic": 0.2200790359824896,
+  "total_samples": 100,
+  "total_vertices_evaluated": 148900,
+  "per_sample_mean_distance_avg": 0.04328048753552139,
+  "per_sample_mean_distance_std": 0.019462060637775856
+}

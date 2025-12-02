@@ -185,6 +185,9 @@ if __name__ == "__main__":
     apply_overrides(globals())
     config: Dict[str, Any] = {k: globals()[k] for k in config_keys}
 
+    if model_cls.startswith("RGBD"):
+        assert depth == True 
+
     def has_tensor_cores():
         if not torch.cuda.is_available():
             return False
