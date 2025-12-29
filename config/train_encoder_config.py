@@ -1,3 +1,5 @@
+from typing import List, Optional, Union
+
 train_dir = "datasets/lungs_bronchi/particles"
 val_dir: Optional[str] = None
 test_dir: Optional[str] = None
@@ -13,7 +15,8 @@ encoder_type = "mlp"  # Options: "mlp", "pointnet"
 use_tnet = False  # Whether to use T-Net (only for PointNet encoder)
 learning_rate = 1e-3
 compile_model = False
-pretrained_path: Optional[str] = None
+pretrained_path= "lightning_logs/train_encoder/mesh_autoencoder/wo54dh4a/checkpoints/last.ckpt"
+
 
 # Learning Rate Scheduling and Warmup
 use_lr_scheduler = True
