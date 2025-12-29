@@ -14,7 +14,7 @@ source .venv/bin/activate
 
 echo "Starting training encoder"
 PYTHONPATH=src python -m train.train_encoder.train config/train_encoder_config.py \
-                --encoder_type=PointNet \
+                --encoder_type=pointnet \
                 --max_epochs=25 \
         
 
