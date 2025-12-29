@@ -38,7 +38,7 @@ limit_train_batches: Union[int, float] = 1.0
 limit_val_batches: Union[int, float] = 1.0
 limit_test_batches: Union[int, float] = 1.0
 checkpoint_name = "mesh_autoencoder-{epoch:02d}-{val_loss:.4f}"
-resume_from: Optional[str] = None
+resume_from="lightning_logs/train_encoder/mesh_autoencoder/wo54dh4a/checkpoints/last.ckpt"
 
 # Logging
 use_wandb = True
