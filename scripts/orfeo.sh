@@ -17,6 +17,7 @@ echo "Starting training encoder"
 PYTHONPATH=src python -m train.train_encoder.train config/train_encoder_config.py \
                 --encoder_type=pointnet \
                 --max_epochs=100 \
+                --use_tnet=True
         
 
 # PYTHONPATH=src python -m train.train_any.train config/train_any_config.py \
