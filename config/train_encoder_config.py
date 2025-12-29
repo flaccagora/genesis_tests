@@ -49,3 +49,6 @@ wandb_group: Optional[str] = None
 wandb_tags: List[str] = []
 wandb_log_model: Union[str, bool] = "all"
 wandb_offline = False
+wandb_resume="allow"    # : Optional[str] = None
+wandb_id="wo54dh4a"     # : Optional[str] = None
+

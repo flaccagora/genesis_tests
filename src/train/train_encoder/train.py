@@ -29,6 +29,8 @@ def build_loggers(config: Dict[str, Any]) -> LoggerReturn:
             offline=config["wandb_offline"],
             group=config["wandb_group"],
             tags=config["wandb_tags"],
+            resume=config.get("wandb_resume", None),
+            id=config.get("wandb_id", None),
         )
         loggers.append(wandb_logger)
 
@@ -174,6 +176,8 @@ if __name__ == "__main__":
     wandb_tags: List[str] = []
     wandb_log_model: Union[str, bool] = "all"
     wandb_offline = False
+    wandb_resume: Optional[str] = None
+    wandb_id: Optional[str] = None
 
     # -----------------------------------------------------------------------------
     config_keys = [
