@@ -9,7 +9,7 @@ from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from pytorch_lightning.loggers import Logger as PLLogger
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 
-from train import DeformNetLightningModule, RotationDataModule
+from train.train_any import ImageToMeshLightningModule, ANYDataModule
 from utils.configurator import apply_overrides
 
 
@@ -75,7 +75,7 @@ def build_trainer(config: Dict[str, Any], monitor_val: bool) -> pl.Trainer:
 
 
 def run(config: Dict[str, Any]) -> None:
-    data_module = RotationDataModule(
+    data_module = ANYDataModule(
         train_dir=config["train_dir"],
         val_dir=config["val_dir"],
         test_dir=config["test_dir"],
@@ -83,17 +83,15 @@ def run(config: Dict[str, Any]) -> None:
         num_workers=config["num_workers"],
         img_size=config["img_size"],
         shuffle=config["shuffle"],
-        rgb=config["rgb"],
-        depth=config["depth"]
     )
 
-    lightning_module = DeformNetLightningModule(
-        model_cls=config["model_cls"],
-        backbone=config["backbone"],
-        criterion=config["criterion"],
+    lightning_module = ImageToMeshLightningModule(
+        n_vertices=config["n_vertices"],
+        latent_dim=config["latent_dim"],
+        pretrained_decoder_path=config["pretrained_decoder_path"],
+        pretrained_resnet=config["pretrained_resnet"],
         lr=config["learning_rate"],
         compile_model=config["compile_model"],
-        pretrained_path=config["pretrained_path"],
         use_lr_scheduler=config["use_lr_scheduler"],
         scheduler_type=config["scheduler_type"],
         warmup_epochs=config["warmup_epochs"],
@@ -102,6 +100,7 @@ def run(config: Dict[str, Any]) -> None:
         step_size=config["step_size"],
         gamma=config["gamma"],
         total_epochs=config["max_epochs"],
+        freeze_decoder=config["freeze_decoder"],
     )
 
     monitor_val = config["val_dir"] is not None
@@ -123,28 +122,28 @@ if __name__ == "__main__":
             mp.set_start_method("spawn", force=True)
         except RuntimeError:
             pass
+    
     # -----------------------------------------------------------------------------
     # Defaults (can be overridden via config files/flags with utils/configurator.py)
     # Data
-    train_dir = "dataset"
+    train_dir = "datasets/lungs_bronchi"
     val_dir: Optional[str] = None
     test_dir: Optional[str] = None
-    batch_size = 32
+    batch_size = 16
     num_workers = 0
     img_size = 224
     shuffle = True
-    rgb = True
-    depth = False
 
     # Model
-    model_cls = "NN"  # Options: "NN", "DeformNet"
-    backbone = "dinov2_vitb14" 
-    learning_rate = 1e-3
+    n_vertices = 4461  # Number of vertices in the mesh
+    latent_dim = 32
+    pretrained_decoder_path: Optional[str] = None  # REQUIRED: Path to pretrained autoencoder checkpoint
+    pretrained_resnet = True  # Use pretrained ResNet18
+    freeze_decoder = True  # Freeze decoder weights during training
+    learning_rate = 1e-4
     compile_model = False
-    pretrained_path: Optional[str] = None
 
     # Learning Rate Scheduling and Warmup
-    criterion = "mse"  # Options: "mse", "mae"
     use_lr_scheduler = True
     scheduler_type = "cosine"  # Options: "cosine", "linear", "exponential", "step"
     warmup_epochs = 2
@@ -154,25 +153,25 @@ if __name__ == "__main__":
     gamma = 0.1  # For step/exponential scheduler (multiply LR by gamma)
 
     # Trainer
-    max_epochs = 10
+    max_epochs = 50
     accelerator: Union[str, int] = "auto"
     devices: Union[str, List[int]] = "auto"
     precision = "bf16-mixed"
-    default_root_dir = "lightning_logs"
-    experiment_name = "deformnet"
+    default_root_dir = "lightning_logs/train_any"
+    experiment_name = "image_to_mesh"
     limit_train_batches: Union[int, float] = 1.0
     limit_val_batches: Union[int, float] = 1.0
     limit_test_batches: Union[int, float] = 1.0
-    checkpoint_name = "deformnet-{epoch:02d}-{val_loss:.4f}"
+    checkpoint_name = "image_to_mesh-{epoch:02d}-{val_loss:.4f}"
     resume_from: Optional[str] = None
 
     # Logging
     use_wandb = True
     use_tensorboard_logger = False
-    wandb_project = "deformnet"
+    wandb_project = "image_to_mesh"
     wandb_entity: Optional[str] = None
     wandb_group: Optional[str] = None
-    wandb_tags: List[str] = []
+    wandb_tags: List[str] = ["any_dataset", "pretrained_decoder"]
     wandb_log_model: Union[str, bool] = "all"
     wandb_offline = False
 
@@ -185,8 +184,13 @@ if __name__ == "__main__":
     apply_overrides(globals())
     config: Dict[str, Any] = {k: globals()[k] for k in config_keys}
 
-    if model_cls.startswith("RGBD"):
-        assert depth == True 
+    # Validate pretrained_decoder_path
+    if config["pretrained_decoder_path"] is None:
+        print("\n" + "="*80)
+        print("WARNING: pretrained_decoder_path is not set!")
+        print("Please provide a path to a pretrained autoencoder checkpoint.")
+        print("Example: pretrained_decoder_path='lightning_logs/train_encoder/checkpoints/best.ckpt'")
+        print("="*80 + "\n")
 
     def has_tensor_cores():
         if not torch.cuda.is_available():
@@ -202,4 +206,3 @@ if __name__ == "__main__":
         print("Running without tensor core precision tweaks")
 
     run(config)
-

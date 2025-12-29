@@ -47,12 +47,12 @@ class GeodesicLoss(nn.Module):
         # See: https://github.com/pytorch/pytorch/issues/7500#issuecomment-502122839.
         traces = R_diffs.diagonal(dim1=-2, dim2=-1).sum(-1)
         dists = torch.acos(torch.clamp((traces - 1) / 2, -1 + self.eps, 1 - self.eps))
-        if self.reduction == "none":
-            return dists
-        elif self.reduction == "mean":
+        if self.reduction == "mean":
             return dists.mean()
         elif self.reduction == "sum":
             return dists.sum()
+        
+        return dists
         
 class MSELoss(nn.Module):
     def __init__(self, reduction: str = "mean") -> None:

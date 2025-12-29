@@ -4,6 +4,182 @@ import numpy as np
 from typing import Optional
 from torch.types import Device
 
+
+def rotate_entity(entity, rx, ry=None, rz=None, center=None):
+    if rx.shape == torch.Size([1,3]):
+        R = rotation_matrix_xyz(rx[0,0], rx[0,1],rx[0,2])
+    elif ry == None or rz == None and rx.shape == torch.Size([3,3]):
+        R = rx
+    elif (ry is not None) and (rz is not None):
+        R = rotation_matrix_xyz(rx, ry, rz)
+    else:
+        raise ValueError
+    
+    # check if R is batched
+    if R.dim() == 3 and R.size(0) == 1:
+        R = R.squeeze(0)
+    else:
+        raise ValueError("Only single rotation matrix is supported")
+    
+    state = entity.get_state()
+    pos = state.pos
+    device = pos.device
+    if center is not None:
+        com = center
+    else:   
+        com = pos.mean(dim=1)
+    pos_centered = pos - com
+    pos_rotated = pos_centered @ R.T.to(device) + com
+    try:
+        entity.set_position(pos_rotated.sceneless())
+    except Exception:
+        print("set_position failed")
+        print("pos.shape:", pos.shape)
+        print("pos_rotated.shape:", pos_rotated.shape)
+
+def rotate_mpm_entity_with_matrix(entity, rotation_matrix, center=None):
+    """
+    Rotate an MPM (particle-based) entity using a rotation matrix.
+    
+    Parameters
+    ----------
+    entity : genesis.MPMEntity
+        The MPM entity to rotate (e.g., lungs with MPM.Elastic material).
+    rotation_matrix : array_like, shape (3, 3)
+        A 3x3 rotation matrix representing the desired rotation.
+        The matrix should be orthogonal (R @ R.T = I) and have determinant +1.
+    center : array_like, shape (3,), optional
+        The center point to rotate around. If None, rotates around the centroid 
+        of all particles. Defaults to None.
+    
+    Notes
+    -----
+    This function rotates all particles of the MPM entity around the specified center.
+    The transformation applied to each particle position is:
+        new_pos = center + R @ (old_pos - center)
+    
+    Example
+    -------
+    >>> # Create a rotation matrix for 45 degrees around Z-axis
+    >>> angle = np.pi / 4
+    >>> R_z = np.array([
+    ...     [np.cos(angle), -np.sin(angle), 0],
+    ...     [np.sin(angle),  np.cos(angle), 0],
+    ...     [0,              0,             1]
+    ... ])
+    >>> # Rotate around the centroid of particles
+    >>> rotate_mpm_entity_with_matrix(lungs, R_z)
+    >>> # Rotate around a custom center point
+    >>> rotate_mpm_entity_with_matrix(lungs, R_z, center=[0.0, 0.0, 0.4])
+    """
+    # Get current particle positions
+    current_positions = entity.get_particles_pos()  # Shape: (n_particles, 3) or (n_envs, n_particles, 3)
+    
+    # Handle both single env and multi-env cases
+    squeeze_output = current_positions.ndim == 2
+    if squeeze_output:
+        current_positions = current_positions.unsqueeze(0)  # Add env dimension
+    
+    # Convert rotation matrix to torch tensor
+    rotation_matrix_torch = torch.tensor(rotation_matrix, dtype=current_positions.dtype, device=current_positions.device)
+    
+    # Determine center of rotation
+    if center is None:
+        # Use centroid of all particles
+        center_torch = current_positions.mean(dim=1, keepdim=True)  # Shape: (n_envs, 1, 3)
+    else:
+        center_torch = torch.tensor(center, dtype=current_positions.dtype, device=current_positions.device)
+        center_torch = center_torch.view(1, 1, 3).expand(current_positions.shape[0], 1, 3)
+    
+    # Apply rotation: new_pos = center + R @ (old_pos - center)
+    relative_positions = current_positions - center_torch  # Shape: (n_envs, n_particles, 3)
+    
+    # Apply rotation matrix to each particle position
+    # relative_positions: (n_envs, n_particles, 3)
+    # rotation_matrix_torch: (3, 3)
+    # Result: (n_envs, n_particles, 3)
+    # rotated_relative = torch.einsum('ij,...j->...i', rotation_matrix_torch, relative_positions)
+    # assuming for now single env only
+    rotated_relative = relative_positions @ rotation_matrix_torch.T
+
+    new_positions = center_torch + rotated_relative
+    
+    # Set the new particle positions
+    if squeeze_output:
+        new_positions = new_positions.squeeze(0)
+    
+    entity.set_particles_pos(new_positions)
+    
+    # Also zero out velocities to prevent instabilities after rotation
+    zero_vels = torch.zeros_like(new_positions)
+    entity.set_particles_vel(zero_vels)
+
+
+def rotate_MPM_entity(entity, rx, ry=None, rz=None, center=None):
+    if rx.shape == torch.Size([1,3]):
+        R = rotation_matrix_xyz(rx[0,0], rx[0,1],rx[0,2])
+    elif ry == None or rz == None and rx.shape == torch.Size([3,3]):
+        R = rx
+    elif (ry is not None) and (rz is not None):
+        R = rotation_matrix_xyz(rx, ry, rz)
+    else:
+        raise ValueError
+
+    # check if R is batched
+    if R.dim() == 3 and R.size(0) == 1:
+        R = R.squeeze(0)
+    else:
+        raise ValueError("Only single rotation matrix is supported")
+
+    state = entity.get_state()
+    pos = state.pos
+    vel = state.vel
+    device = pos.device
+    if center is not None:
+        com = center
+    else:   
+        com = pos.mean(dim=1)
+    pos_centered = pos - com
+    pos_rotated = pos_centered @ R.T.to(device) + com
+    entity.set_position(pos_rotated.sceneless())
+    entity.set_velocity(np.zeros_like(vel.cpu().numpy()))
+
+def rotate_rigid_entity(entity, rx, ry=None, rz=None, center=None):
+    # check batched rotation matirx
+    if rx.dim() == 3 and rx.size(0) == 1:
+        rx = rx.squeeze(0)
+    elif rx.dim() != 2 or rx.size(0) != 3 or rx.size(1) != 3:
+        raise ValueError("Only single rotation matrix is supported")
+
+    if rx.shape == torch.Size([1,3]):
+        R = euler_to_quaternion(rx[0,0], rx[0,1],rx[0,2])
+    elif rx.shape == torch.Size([3,3]):
+        R = rotmat_to_quaternion(rx)
+    elif (rx is not None) and (ry is not None) and (rz is not None):
+        R = euler_to_quaternion(rx, ry,rz)
+    else:
+        raise ValueError
+
+
+    if center is not None:
+        assert rx.shape == torch.Size([3,3]), "Center-based rotation only supports rotation matrix input"
+        current_pos = entity.get_pos()
+        
+        # Translate to origin (relative to center), rotate, translate back
+        # new_pos = center + R @ (current_pos - center)
+        relative_pos = current_pos - center
+        rotated_relative_pos = rx @ relative_pos
+        new_pos = center + rotated_relative_pos
+        
+        # Set new position
+        entity.set_pos(new_pos)
+
+    quat = entity.get_quat()
+
+    entity.set_quat(quat_mul(quat,R))
+
+
+
 def euler_to_quaternion(roll, pitch, yaw):
     """
     Convert Euler angles (roll=X, pitch=Y, yaw=Z) to quaternions.
@@ -42,50 +218,6 @@ def rotation_matrix_xyz(rx, ry, rz):
     R = Rz @ Ry @ Rx
     return R
 
-def rotate_entity(entity, rx, ry=None, rz=None, center=None):
-    if rx.shape == torch.Size([1,3]):
-        R = rotation_matrix_xyz(rx[0,0], rx[0,1],rx[0,2])
-    elif ry == None or rz == None and rx.shape == torch.Size([3,3]):
-        R = rx
-    elif (ry is not None) and (rz is not None):
-        R = rotation_matrix_xyz(rx, ry, rz)
-    else:
-        raise ValueError
-
-    state = entity.get_state()
-    pos = state.pos
-    device = pos.device
-    if center is not None:
-        com = center
-    else:   
-        com = pos.mean(dim=1)
-    pos_centered = pos - com
-    pos_rotated = pos_centered @ R.T.to(device) + com
-    entity.set_position(pos_rotated.sceneless())
-
-def rotate_MPM_entity(entity, rx, ry=None, rz=None, center=None):
-    if rx.shape == torch.Size([1,3]):
-        R = rotation_matrix_xyz(rx[0,0], rx[0,1],rx[0,2])
-    elif ry == None or rz == None and rx.shape == torch.Size([3,3]):
-        R = rx
-    elif (ry is not None) and (rz is not None):
-        R = rotation_matrix_xyz(rx, ry, rz)
-    else:
-        raise ValueError
-
-    state = entity.get_state()
-    pos = state.pos
-    vel = state.vel
-    device = pos.device
-    if center is not None:
-        com = center
-    else:   
-        com = pos.mean(dim=1)
-    pos_centered = pos - com
-    pos_rotated = pos_centered @ R.T.to(device) + com
-    entity.set_position(pos_rotated.sceneless())
-    entity.set_velocity(np.zeros_like(vel.cpu().numpy()))
-
 def quaternion_raw_multiply(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """
     Multiply two quaternions.
@@ -122,21 +254,6 @@ def quat_mul(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     ab = quaternion_raw_multiply(a, b)
     return standardize_quaternion(ab)
 
-def rotate_rigid_entity(entity, rx, ry=None, rz=None, center=None):
-    if rx.shape == torch.Size([1,3]):
-        R = euler_to_quaternion(rx[0,0], rx[0,1],rx[0,2])
-    elif rx.shape == torch.Size([3,3]):
-        R = rotmat_to_quaternion(rx)
-    elif (rx is not None) and (ry is not None) and (rz is not None):
-        R = euler_to_quaternion(rx, ry,rz)
-    else:
-        raise ValueError
-
-    quat = entity.get_quat()
-
-    entity.set_quat(quat_mul(quat,R))
-
-
 def rot6d_to_rotmat(d6: torch.Tensor) -> torch.Tensor:
     """
     Converts 6D rotation representation by Zhou et al. [1] to rotation matrix
@@ -159,7 +276,6 @@ def rot6d_to_rotmat(d6: torch.Tensor) -> torch.Tensor:
     b2 = F.normalize(b2, dim=-1)
     b3 = torch.cross(b1, b2, dim=-1)
     return torch.stack((b1, b2, b3), dim=-2)
-
 
 def rotmat_to_rot6d(matrix: torch.Tensor) -> torch.Tensor:
     """
@@ -196,7 +312,6 @@ def generate_random_rotation_6d(batch_size=1, device='cpu'):
         rot_6d = rot_6d.squeeze(0)
     
     return rot_6d
-
 
 def axis_angle_to_rotmat(axis_angle):
     """
@@ -235,7 +350,6 @@ def axis_angle_to_rotmat(axis_angle):
     rot_mat = I + sin_angle.unsqueeze(2) * K + (1 - cos_angle).unsqueeze(2) * torch.bmm(K, K)
     
     return rot_mat
-
 
 def euler_to_rotmat(euler_angles):
     """
@@ -435,7 +549,6 @@ def generate_random_rotation_matrix(
     """
     quaternions = random_quaternions(n, dtype=dtype, device=device)
     return quaternion_to_rotmat(quaternions)
-
 
 def random_quaternions(
     n: int, dtype: Optional[torch.dtype] = None, device: Optional[Device] = None

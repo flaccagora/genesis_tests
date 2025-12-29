@@ -196,6 +196,18 @@ def load_model_from_checkpoint(
     
     return lightning_module
 
+def translate(entity, translation: np.ndarray):
+    """Translate an entity by a given translation vector.
+    
+    Args:
+        entity: The Genesis entity to translate
+        translation: A numpy array of shape (3,) representing the translation vector
+    """
+    current_pos = entity.get_pos()
+    
+    new_pos = current_pos + torch.tensor(translation, dtype=current_pos.dtype, device=current_pos.device)
+    entity.set_pos(new_pos)
+    
 
 if __name__ == "__main__":
 
@@ -271,6 +283,7 @@ if __name__ == "__main__":
             scene.reset()
             rotate(torus_fem_0,rotation)
             rotate(torus_fem_1,pred_rotation)
+            translate(torus_fem_1, np.array([1.0, 0.0, 0.0]))
             scene.step()
             if show_viewer:
                 input("Press Enter to continue...")

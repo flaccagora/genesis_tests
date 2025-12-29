@@ -2,22 +2,30 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-def show_image(image_array):
+def show_image(image_array, is_depth=False):
     """
-    Display an image from a numpy array.
+    Display an image or depth map from a numpy array or torch tensor.
     
     Parameters:
-    image_array (np.ndarray): Image array with shape (height, width, channels)
+    image_array (np.ndarray or torch.Tensor): Image array or tensor.
+    is_depth (bool): Whether to treat the input as a depth map.
     """
-    if type(image_array) == torch.Tensor and image_array.shape[0] == 3:
-        image_array = image_array.permute(1,2,0).cpu().numpy()
+    print("SHAPE before: ", image_array.shape)
 
+    if isinstance(image_array, torch.Tensor):
+        if image_array.ndim == 3 and image_array.shape[0] in [1, 3]:
+            image_array = image_array.permute(1, 2, 0)
+        image_array = image_array.cpu().numpy()
+    print("SHAPE after: ", image_array.shape)
     plt.figure(figsize=(10, 8))
-    plt.imshow(image_array)
-    plt.axis('off')  # Hide axes
+    if is_depth:
+        plt.imshow(image_array, cmap='gray')
+    else:
+        plt.imshow(image_array)
+    plt.axis('off')
     plt.title('Image Display')
     plt.show()
-    
+
 def show_images(*images):
     """
     Display up to 6 images in a 2x3 grid.

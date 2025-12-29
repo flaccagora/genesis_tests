@@ -222,3 +222,5 @@ lightning_logs/*
 *.pth
 *.face
 *.node
+varie_info/
+varie_info/*
