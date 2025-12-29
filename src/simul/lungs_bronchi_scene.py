@@ -12,6 +12,7 @@ from scipy.spatial.transform import Rotation as R
 
 import genesis as gs
 from utils.rotation import generate_random_rotation_matrix
+from tqdm import trange
 
 
 def rotate_entity_with_matrix(entity, rotation_matrix, center=None):
@@ -128,8 +129,9 @@ def rotate_mpm_entity_with_matrix(entity, rotation_matrix, center=None):
         current_positions = current_positions.unsqueeze(0)  # Add env dimension
     
     # Convert rotation matrix to torch tensor
-    rotation_matrix_torch = torch.tensor(rotation_matrix, dtype=current_positions.dtype, device=current_positions.device)
-    
+    rotation_matrix_torch = rotation_matrix.detach().clone().to(current_positions.device)
+    # set rotation matrix dtype to current_positions.dtype
+    rotation_matrix_torch = rotation_matrix_torch.to(current_positions.dtype)
     # Determine center of rotation
     if center is None:
         # Use centroid of all particles
@@ -204,11 +206,18 @@ def main():
     parser.add_argument("-v", "--vis", action="store_true", default=False, help="Show visualization")
     parser.add_argument("-c", "--cpu", action="store_true", default=False, help="Use CPU backend")
     parser.add_argument("-o", "--output", type=str, default="lungs_render.png", help="Output image filename")
+    parser.add_argument("-l", "--log", type=str, default="warning", help="Logging level")
+    parser.add_argument("-n", "--num", type=int, default=10000, help="Number of frames to render")
     args = parser.parse_args()
 
-    def init_scene():
+    print("="*60)
+    print("Args:", args)
+    print("="*60)
+
+
+    def init_scene(log_level):
         ########################## init ##########################
-        gs.init(backend=gs.cpu if args.cpu else gs.gpu, precision="32", logging_level="info")
+        gs.init(backend=gs.cpu if args.cpu else gs.gpu, precision="32", logging_level=log_level)
 
         ########################## create a scene ##########################
         scene = gs.Scene(
@@ -310,7 +319,7 @@ def main():
 
     # IMPORTANT: Get initial state BEFORE any simulation steps
     # This captures the exact initial configuration of all particles
-    scene, initial_state, lungs, bronchi, cam = init_scene()
+    scene, initial_state, lungs, bronchi, cam = init_scene(args.log)
 
     ########################## simulation loop ##########################
     
@@ -318,7 +327,6 @@ def main():
     rotation_center = np.array([0.0, 0.0, 0.3])
     
     # Step 1: Run a few initial steps to let the scene settle
-    print("Running initial settling steps...")
     for i in range(50):
         scene.step()
 
@@ -334,7 +342,7 @@ def main():
     os.makedirs("datasets/lungs_bronchi/actu", exist_ok=True)
     
             
-    for i in range(10):
+    for i in trange(args.num):
         if i % 100 == 0:
             reset_scene_with_mpm(scene, initial_state)
             rotation_matrix = generate_random_rotation_matrix(1).squeeze(0)
@@ -348,9 +356,6 @@ def main():
 
         rgb, depth, _, _ = cam.render(rgb=True, depth=True)
         
-        # print types
-        print("particles: ", lungs.get_particles_pos().shape)
-
         # save rgb, depth, normal, particles, rotation, actu
         np.save(f"datasets/lungs_bronchi/RGB/{i}.npy", rgb)
         np.save(f"datasets/lungs_bronchi/depth/{i}.npy", depth)
@@ -358,8 +363,9 @@ def main():
         np.save(f"datasets/lungs_bronchi/rotation/{i}.npy", rotation_matrix.detach().cpu().numpy())
         np.save(f"datasets/lungs_bronchi/actu/{i}.npy", actu)
         
-
+    print("="*60)
     print("Done!")
+    print("="*60)
 
     # dummy save and load to check for consistency
     points = lungs.get_particles_pos()
