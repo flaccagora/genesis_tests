@@ -16,7 +16,11 @@ source .venv/bin/activate
 echo "Starting training encoder"
 PYTHONPATH=src python -m train.train_encoder.train config/train_encoder_config.py \
                 --encoder_type=pointnet \
-                --max_epochs=25 \
+                --max_epochs=100 \
         
 
+# PYTHONPATH=src python -m train.train_any.train config/train_any_config.py \
+#                         --pretrained_decoder_path = "lightning_logs/train_encoder/mesh_autoencoder/zco1axri/checkpoints/last.ckpt" \
+#                         --max_epochs=25 
+                        
 exit 0
