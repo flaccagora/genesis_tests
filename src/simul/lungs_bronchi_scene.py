@@ -238,7 +238,7 @@ def main():
                 max_FPS=60,
             ),
             vis_options=gs.options.VisOptions(
-                visualize_mpm_boundary=True,
+                visualize_mpm_boundary=False,
                 rendered_envs_idx=[0],
             ),
             show_viewer=args.vis,
