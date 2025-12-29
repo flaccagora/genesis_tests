@@ -56,14 +56,12 @@ case "$OPTION" in
         echo "Starting training encoder"
         PYTHONPATH=src python -m train.train_encoder.train config/train_encoder_config.py \
                         --encoder_type=pointnet \
-                        --max_epochs=100 \
-                        --use_tnet=True
+                        --use_tnet=True \
         ;;
     any)
         echo "Starting training any"
         PYTHONPATH=src python -m train.train_any.train config/train_any_config.py \
                                 --pretrained_decoder_path = "lightning_logs/train_encoder/mesh_autoencoder/zco1axri/checkpoints/last.ckpt" \
-                                --max_epochs=25 
         ;;
     *)
         echo "Error: Invalid option '$OPTION'"

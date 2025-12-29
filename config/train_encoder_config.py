@@ -1,7 +1,7 @@
 train_dir = "datasets/lungs_bronchi/particles"
 val_dir: Optional[str] = None
 test_dir: Optional[str] = None
-batch_size = 32
+batch_size = 128
 num_workers = 0
 shuffle = True
 
