@@ -142,6 +142,57 @@ class RGBD_RotationPredictor(_BaseRotationPredictor):
         return rot_6d
 
 
+class RGB_ActuationRotationPredictor(_BaseRotationPredictor):
+    """Actuation and Rotation predictor for RGB images (expects 3-channel input)."""
+
+    def __init__(
+        self,
+        hidden_dim: int = 512,
+        input_size: int = 224,
+        dino_model: str = "dinov2_vits14",
+        freeze_backbone: bool = True,
+    ):
+        super().__init__(
+            hidden_dim=hidden_dim,
+            input_size=input_size,
+            dino_model=dino_model,
+            freeze_backbone=freeze_backbone,
+        )
+        # Actuation head: MLP (outputs 1 scalar actuation parameter)
+        self.actu_head = nn.Sequential(
+            nn.Linear(self.backbone_output_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_dim, 1),
+        )
+        
+        # Rotation head: MLP (outputs 6D rotation representation)
+        self.rot_head = nn.Sequential(
+            nn.Linear(self.backbone_output_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_dim, 6),
+        )
+
+    def forward(self, x):
+        """x: (B, 3, H, W) RGB images. Returns (actu, rot_6d)."""
+        tokens = self.backbone(x)  # (B, num_tokens, embed_dim)
+        features = tokens.mean(dim=1)  # (B, embed_dim)
+        
+        actu = self.actu_head(features)
+        
+        rot_6d = self.rot_head(features)
+        rot_6d = F.normalize(rot_6d.reshape(-1, 2, 3), dim=-1).reshape(-1, 6)
+        
+        return actu, rot_6d
+
+
 class Dino_RGB_RotationPredictor(nn.Module):
     """Rotation predictor for RGB images using the local Dino backbone (dinov2).
 

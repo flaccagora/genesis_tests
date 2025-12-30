@@ -163,6 +163,60 @@ class ANYDataset(Dataset):
             'rotation': rotation,
             'actu': actu
         }
+
+class ImageActuationRotationDataset(Dataset):
+    def __init__(self, root_dir, transform=None):
+        """
+        Args:
+            root_dir (str): Path to the dataset folder containing subdirectories:
+                - RGB/: RGB images as .npy files
+                - actu/: Actuator data as .npy files
+                - rotation/: Rotation matrices as .npy files
+            transform (callable, optional): Optional transform to be applied to RGB images.
+        """
+        self.root_dir = root_dir
+        self.transform = transform
+        self.samples = self._load_samples()
+
+    def _load_samples(self):
+        rgb_dir = os.path.join(self.root_dir, "RGB")
+        actu_dir = os.path.join(self.root_dir, "actu")
+        rot_dir = os.path.join(self.root_dir, "rotation")
+        
+        if not os.path.exists(rgb_dir) or not os.path.exists(actu_dir) or not os.path.exists(rot_dir):
+             raise FileNotFoundError(f"RGB, actu or rotation directory not found in {self.root_dir}")
+
+        samples = []
+        for fname in sorted(os.listdir(rgb_dir)):
+            if fname.endswith('.npy'):
+                idx = os.path.splitext(fname)[0]
+                rgb_path = os.path.join(rgb_dir, f"{idx}.npy")
+                actu_path = os.path.join(actu_dir, f"{idx}.npy")
+                rot_path = os.path.join(rot_dir, f"{idx}.npy")
+                
+                if os.path.exists(actu_path) and os.path.exists(rot_path):
+                    samples.append((rgb_path, actu_path, rot_path))
+        return samples
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        rgb_path, actu_path, rot_path = self.samples[idx]
+        rgb = np.load(rgb_path)
+        actu = np.load(actu_path)
+        rot = np.load(rot_path)
+
+        if self.transform:
+            rgb = self.transform(rgb)
+        else:
+            rgb = torch.from_numpy(rgb).float()
+            if rgb.dim() == 3 and rgb.shape[-1] == 3:
+                rgb = rgb.permute(2, 0, 1)
+
+        actu = torch.from_numpy(actu).float()
+        rot = torch.from_numpy(rot).float()
+        return rgb, actu, rot
         
 def create_dataloader(
     root_dir, batch_size=32, shuffle=True, num_workers=0, img_size=224):

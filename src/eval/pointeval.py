@@ -109,7 +109,7 @@ def run_point_evaluation(
 
 if __name__ == "__main__":
     # Settings (can be overridden via system args)
-    checkpoint_path = "model.ckpt"  # MUST BE PROVIDED
+    checkpoint_path = "lightning_logs/train_encoder/mesh_autoencoder/wo54dh4a/checkpoints/last.ckpt"  # MUST BE PROVIDED
     data_dir = "datasets/lungs_bronchi/particles"
     n_vertices = 4461
     latent_dim = 32
