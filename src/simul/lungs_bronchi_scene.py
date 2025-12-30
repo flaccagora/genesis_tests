@@ -203,6 +203,7 @@ def reset_scene_with_mpm(scene, state):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("-d", "--data", type=str, default="lungs_bronchi", help="Data directory")
     parser.add_argument("-v", "--vis", action="store_true", default=False, help="Show visualization")
     parser.add_argument("-c", "--cpu", action="store_true", default=False, help="Use CPU backend")
     parser.add_argument("-o", "--output", type=str, default="lungs_render.png", help="Output image filename")
@@ -334,12 +335,12 @@ def main():
 
     # create folder structure
     # in datasets/lungs_bronchi I wand a folder for every category: RGB depth normal particles rotation actu
-    os.makedirs("datasets/lungs_bronchi/RGB", exist_ok=True)
-    os.makedirs("datasets/lungs_bronchi/depth", exist_ok=True)
-    os.makedirs("datasets/lungs_bronchi/normal", exist_ok=True)
-    os.makedirs("datasets/lungs_bronchi/particles", exist_ok=True)
-    os.makedirs("datasets/lungs_bronchi/rotation", exist_ok=True)
-    os.makedirs("datasets/lungs_bronchi/actu", exist_ok=True)
+    os.makedirs("datasets/args.data/RGB", exist_ok=True)
+    os.makedirs("datasets/args.data/depth", exist_ok=True)
+    os.makedirs("datasets/args.data/normal", exist_ok=True)
+    os.makedirs("datasets/args.data/particles", exist_ok=True)
+    os.makedirs("datasets/args.data/rotation", exist_ok=True)
+    os.makedirs("datasets/args.data/actu", exist_ok=True)
     
             
     for i in trange(args.num):
@@ -357,11 +358,11 @@ def main():
         rgb, depth, _, _ = cam.render(rgb=True, depth=True)
         
         # save rgb, depth, normal, particles, rotation, actu
-        np.save(f"datasets/lungs_bronchi/RGB/{i}.npy", rgb)
-        np.save(f"datasets/lungs_bronchi/depth/{i}.npy", depth)
-        np.save(f"datasets/lungs_bronchi/particles/{i}.npy", lungs.get_particles_pos().detach().cpu().numpy())
-        np.save(f"datasets/lungs_bronchi/rotation/{i}.npy", rotation_matrix.detach().cpu().numpy())
-        np.save(f"datasets/lungs_bronchi/actu/{i}.npy", actu)
+        np.save(f"datasets/args.data/RGB/{i}.npy", rgb)
+        np.save(f"datasets/args.data/depth/{i}.npy", depth)
+        np.save(f"datasets/args.data/particles/{i}.npy", lungs.get_particles_pos().detach().cpu().numpy())
+        np.save(f"datasets/args.data/rotation/{i}.npy", rotation_matrix.detach().cpu().numpy())
+        np.save(f"datasets/args.data/actu/{i}.npy", actu)
         
     print("="*60)
     print("Done!")

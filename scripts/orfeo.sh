@@ -50,7 +50,7 @@ source .venv/bin/activate
 case "$OPTION" in
     dataset)
         echo "Constructing dataset"
-        PYTHONPATH=src python -m simul.lungs_bronchi_scene
+        PYTHONPATH=src python -m simul.lungs_bronchi_scene -d lungs_bronchi_1
         ;;
     encoder)
         echo "Starting training encoder"
