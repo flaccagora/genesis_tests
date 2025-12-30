@@ -21,7 +21,7 @@ pretrained_path = None
 actu_weight = 1.0
 rot_weight = 1.0
 trans_weight = 1.0
-p_init_path = "datasets/lungs_bronchi/init_pos.npy"
+p_init_path = "datasets/init_pos.npy"
 
 # Trainer ----------------------------------------------------------------------
 max_epochs = 50
