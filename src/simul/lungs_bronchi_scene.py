@@ -335,12 +335,12 @@ def main():
 
     # create folder structure
     # in datasets/lungs_bronchi I wand a folder for every category: RGB depth normal particles rotation actu
-    os.makedirs("datasets/args.data/RGB", exist_ok=True)
-    os.makedirs("datasets/args.data/depth", exist_ok=True)
-    os.makedirs("datasets/args.data/normal", exist_ok=True)
-    os.makedirs("datasets/args.data/particles", exist_ok=True)
-    os.makedirs("datasets/args.data/rotation", exist_ok=True)
-    os.makedirs("datasets/args.data/actu", exist_ok=True)
+    os.makedirs(f"datasets/{args.data}/RGB", exist_ok=True)
+    os.makedirs(f"datasets/{args.data}/depth", exist_ok=True)
+    os.makedirs(f"datasets/{args.data}/normal", exist_ok=True)
+    os.makedirs(f"datasets/{args.data}/particles", exist_ok=True)
+    os.makedirs(f"datasets/{args.data}/rotation", exist_ok=True)
+    os.makedirs(f"datasets/{args.data}/actu", exist_ok=True)
     
             
     for i in trange(args.num):
@@ -358,11 +358,11 @@ def main():
         rgb, depth, _, _ = cam.render(rgb=True, depth=True)
         
         # save rgb, depth, normal, particles, rotation, actu
-        np.save(f"datasets/args.data/RGB/{i}.npy", rgb)
-        np.save(f"datasets/args.data/depth/{i}.npy", depth)
-        np.save(f"datasets/args.data/particles/{i}.npy", lungs.get_particles_pos().detach().cpu().numpy())
-        np.save(f"datasets/args.data/rotation/{i}.npy", rotation_matrix.detach().cpu().numpy())
-        np.save(f"datasets/args.data/actu/{i}.npy", actu)
+        np.save(f"datasets/{args.data}/RGB/{i}.npy", rgb)
+        np.save(f"datasets/{args.data}/depth/{i}.npy", depth)
+        np.save(f"datasets/{args.data}/particles/{i}.npy", lungs.get_particles_pos().detach().cpu().numpy())
+        np.save(f"datasets/{args.data}/rotation/{i}.npy", rotation_matrix.detach().cpu().numpy())
+        np.save(f"datasets/{args.data}/actu/{i}.npy", actu)
         
     print("="*60)
     print("Done!")
