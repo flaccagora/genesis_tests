@@ -17,6 +17,7 @@ from torch.optim.lr_scheduler import (
 
 from models import RGB_RotationPredictor, RGBD_RotationPredictor, Dino_RGB_RotationPredictor, RGB_ActuationRotationPredictor
 from loss.loss import GeodesicLoss, MSELoss
+from utils.rotation import rot6d_to_rotmat
 
 MODEL_REGISTRY: Dict[str, Type[nn.Module]] = {
     "RGB_RotationPredictor": RGB_RotationPredictor,
@@ -56,6 +57,8 @@ class DeformNetLightningModule(pl.LightningModule):
         total_epochs: int = 10,
         actu_weight: float = 1.0,
         rot_weight: float = 1.0,
+        trans_weight: float = 1.0,
+        p_init_path: Optional[str] = None,
     ) -> None:
         super().__init__()
 
@@ -77,6 +80,16 @@ class DeformNetLightningModule(pl.LightningModule):
         self.lr = lr
         self.actu_weight = actu_weight
         self.rot_weight = rot_weight
+        self.trans_weight = trans_weight
+        
+        # Load initial particles
+        self.register_buffer("p_init", None)
+        if p_init_path and Path(p_init_path).exists():
+            import numpy as np
+            p_init = np.load(p_init_path)
+            self.p_init = torch.from_numpy(p_init).float()
+        elif p_init_path:
+             print(f"Warning: p_init_path {p_init_path} provided but not found.")
 
         # Learning rate scheduler parameters
         self.use_lr_scheduler = use_lr_scheduler
@@ -97,22 +110,41 @@ class DeformNetLightningModule(pl.LightningModule):
         return rotation_matrices.float()
 
     def _common_step(self, batch, batch_idx: int, stage: str):
-        if len(batch) == 3:
-            images, actu_targets, rot_targets = batch
-            actu_preds, rot_preds = self.forward(images)
+        if len(batch) == 4:
+            images, actu_targets, rot_targets, particles_targets = batch
+            actu_preds, rot_preds, trans_preds = self.forward(images)
             
             loss_actu = F.mse_loss(actu_preds, actu_targets)
             
             rot_targets = self._prepare_targets(rot_targets).to(images.device)
             loss_rot = self.criterion(rot_preds, rot_targets)
             
-            loss = self.actu_weight * loss_actu + self.rot_weight * loss_rot
+            loss_trans = 0.0
+            if self.p_init is not None:
+                # Apply predicted rigid transform to initial particles
+                # p_init: (N, 3) -> (B, N, 3)
+                # rot_preds: (B, 6) -> (B, 3, 3)
+                # trans_preds: (B, 3) -> (B, 1, 3)
+                
+                B = images.size(0)
+                p_init_batch = self.p_init.unsqueeze(0).expand(B, -1, -1).to(images.device)
+                
+                rot_mat_preds = rot6d_to_rotmat(rot_preds) # (B, 3, 3)
+                
+                # R * P + t
+                # (B, 3, 3) @ (B, N, 3)^T -> (B, 3, N) -> (B, N, 3)
+                p_pred = torch.bmm(rot_mat_preds, p_init_batch.transpose(1, 2)).transpose(1, 2) + trans_preds.unsqueeze(1)
+                
+                loss_trans = F.mse_loss(p_pred, particles_targets)
+            
+            loss = self.actu_weight * loss_actu + self.rot_weight * loss_rot + self.trans_weight * loss_trans
             
             self.log(f"{stage}_loss_actu", loss_actu, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True)
             self.log(f"{stage}_loss_rot", loss_rot, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True)
+            self.log(f"{stage}_loss_trans", loss_trans, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True)
             self.log(f"{stage}_loss", loss, prog_bar=(stage == "train"), on_step=True, on_epoch=True, sync_dist=True)
             return loss
-        else:
+        elif len(batch) == 3:
             images, rotation_matrices = batch
             targets = self._prepare_targets(rotation_matrices).to(images.device)
             preds = self.forward(images)

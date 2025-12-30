@@ -179,9 +179,20 @@ class RGB_ActuationRotationPredictor(_BaseRotationPredictor):
             nn.Dropout(0.1),
             nn.Linear(hidden_dim, 6),
         )
+        
+        # Translation head: MLP (outputs 3D translation vector)
+        self.trans_head = nn.Sequential(
+            nn.Linear(self.backbone_output_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_dim, 3),
+        )
 
     def forward(self, x):
-        """x: (B, 3, H, W) RGB images. Returns (actu, rot_6d)."""
+        """x: (B, 3, H, W) RGB images. Returns (actu, rot_6d, trans)."""
         tokens = self.backbone(x)  # (B, num_tokens, embed_dim)
         features = tokens.mean(dim=1)  # (B, embed_dim)
         
@@ -190,7 +201,9 @@ class RGB_ActuationRotationPredictor(_BaseRotationPredictor):
         rot_6d = self.rot_head(features)
         rot_6d = F.normalize(rot_6d.reshape(-1, 2, 3), dim=-1).reshape(-1, 6)
         
-        return actu, rot_6d
+        trans = self.trans_head(features)
+        
+        return actu, rot_6d, trans
 
 
 class Dino_RGB_RotationPredictor(nn.Module):

@@ -323,6 +323,7 @@ def main():
     scene, initial_state, lungs, bronchi, cam = init_scene(args.log)
 
     ########################## simulation loop ##########################
+    # np.save(f"datasets/lungs_bronchi/init_pos.npy", lungs.get_particles_pos().detach().cpu().numpy())
     
     # Define a center point for rotation (e.g., camera lookat)
     rotation_center = np.array([0.0, 0.0, 0.3])

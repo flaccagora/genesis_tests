@@ -51,8 +51,8 @@ def build_trainer(config: Dict[str, Any], monitor_val: bool) -> pl.Trainer:
     callbacks = [
         ModelCheckpoint(
             filename=config["checkpoint_name"],
-            monitor="val_loss" if monitor_val else "train_loss",
-            save_top_k=1,
+            monitor="val_loss_epoch" if monitor_val else "train_loss_epoch",
+            save_top_k=config.get("save_top_k", 1),
             mode="min",
             save_last=True,
         ),
@@ -103,6 +103,8 @@ def run(config: Dict[str, Any]) -> None:
         total_epochs=config["max_epochs"],
         actu_weight=config.get("actu_weight", 1.0),
         rot_weight=config.get("rot_weight", 1.0),
+        trans_weight=config.get("trans_weight", 1.0),
+        p_init_path=config.get("p_init_path", None),
     )
 
     monitor_val = config["val_dir"] is not None
@@ -145,6 +147,8 @@ if __name__ == "__main__":
     pretrained_path: Optional[str] = None
     actu_weight = 1.0
     rot_weight = 1.0
+    trans_weight = 1.0
+    p_init_path: Optional[str] = None
 
     # Learning Rate Scheduling and Warmup
     criterion = "mse"  # Options: "mse", "mae"

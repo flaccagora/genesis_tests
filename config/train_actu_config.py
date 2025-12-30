@@ -20,6 +20,8 @@ compile_model = True
 pretrained_path = None
 actu_weight = 1.0
 rot_weight = 1.0
+trans_weight = 1.0
+p_init_path = "datasets/lungs_bronchi/init_pos.npy"
 
 # Trainer ----------------------------------------------------------------------
 max_epochs = 50
@@ -31,8 +33,9 @@ experiment_name = "actu_rot_net"
 limit_train_batches = 1.0
 limit_val_batches = 1.0
 limit_test_batches = 1.0
-checkpoint_name = "actu_rot-{epoch:02d}-{train_loss:.4f}"
-resume_from = None 
+checkpoint_name = "actu_rot-{epoch:02d}-{train_loss_epoch:.4f}"
+save_top_k = 1
+resume_from = None  
 
 # LR ---------------------------------------------------------------------------
 criterion = "mse"  # Options: "mse", "geodesic" (for rotation)
@@ -47,7 +50,7 @@ gamma = 0.1  # For step/exponential scheduler (multiply LR by gamma)
 
 # Logging ----------------------------------------------------------------------
 use_wandb = True
-use_tensorboard_logger = True
+use_tensorboard_logger = False
 wandb_project = "genesis-tests"
 wandb_entity = None
 wandb_group = "actuation"

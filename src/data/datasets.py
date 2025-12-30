@@ -172,6 +172,7 @@ class ImageActuationRotationDataset(Dataset):
                 - RGB/: RGB images as .npy files
                 - actu/: Actuator data as .npy files
                 - rotation/: Rotation matrices as .npy files
+                - particles/: Particle positions as .npy files
             transform (callable, optional): Optional transform to be applied to RGB images.
         """
         self.root_dir = root_dir
@@ -182,9 +183,10 @@ class ImageActuationRotationDataset(Dataset):
         rgb_dir = os.path.join(self.root_dir, "RGB")
         actu_dir = os.path.join(self.root_dir, "actu")
         rot_dir = os.path.join(self.root_dir, "rotation")
+        particles_dir = os.path.join(self.root_dir, "particles")
         
-        if not os.path.exists(rgb_dir) or not os.path.exists(actu_dir) or not os.path.exists(rot_dir):
-             raise FileNotFoundError(f"RGB, actu or rotation directory not found in {self.root_dir}")
+        if not os.path.exists(rgb_dir) or not os.path.exists(actu_dir) or not os.path.exists(rot_dir) or not os.path.exists(particles_dir):
+             raise FileNotFoundError(f"RGB, actu, rotation or particles directory not found in {self.root_dir}")
 
         samples = []
         for fname in sorted(os.listdir(rgb_dir)):
@@ -193,19 +195,21 @@ class ImageActuationRotationDataset(Dataset):
                 rgb_path = os.path.join(rgb_dir, f"{idx}.npy")
                 actu_path = os.path.join(actu_dir, f"{idx}.npy")
                 rot_path = os.path.join(rot_dir, f"{idx}.npy")
+                particles_path = os.path.join(particles_dir, f"{idx}.npy")
                 
-                if os.path.exists(actu_path) and os.path.exists(rot_path):
-                    samples.append((rgb_path, actu_path, rot_path))
+                if os.path.exists(actu_path) and os.path.exists(rot_path) and os.path.exists(particles_path):
+                    samples.append((rgb_path, actu_path, rot_path, particles_path))
         return samples
 
     def __len__(self):
         return len(self.samples)
 
     def __getitem__(self, idx):
-        rgb_path, actu_path, rot_path = self.samples[idx]
+        rgb_path, actu_path, rot_path, particles_path = self.samples[idx]
         rgb = np.load(rgb_path)
         actu = np.load(actu_path)
         rot = np.load(rot_path)
+        particles = np.load(particles_path)
 
         if self.transform:
             rgb = self.transform(rgb)
@@ -216,7 +220,8 @@ class ImageActuationRotationDataset(Dataset):
 
         actu = torch.from_numpy(actu).float()
         rot = torch.from_numpy(rot).float()
-        return rgb, actu, rot
+        particles = torch.from_numpy(particles).float()
+        return rgb, actu, rot, particles
         
 def create_dataloader(
     root_dir, batch_size=32, shuffle=True, num_workers=0, img_size=224):
