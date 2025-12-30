@@ -8,8 +8,8 @@ Usage:
 train_dir = "datasets/lungs_bronchi"
 val_dir = None
 test_dir = None
-batch_size = 32
-num_workers = 4
+batch_size = 128
+num_workers = 8
 img_size = 224 
 shuffle = True
 
@@ -34,7 +34,7 @@ limit_train_batches = 1.0
 limit_val_batches = 1.0
 limit_test_batches = 1.0
 checkpoint_name = "actu_rot-{epoch:02d}-{train_loss_epoch:.4f}"
-save_top_k = 1
+save_top_k = 4
 resume_from = None  
 
 # LR ---------------------------------------------------------------------------

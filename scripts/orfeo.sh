@@ -57,8 +57,6 @@ case "$OPTION" in
         PYTHONPATH=src python -m train.train_encoder.train config/train_encoder_config.py \
                         --encoder_type=pointnet \
                         --use_tnet=True \
-                        --train_dir="datasets/lungs_bronchi_1/particles"
-
         ;;
     any)
         echo "Starting training any"
