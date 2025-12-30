@@ -12,4 +12,4 @@
 conda deactivate
 source .venv/bin/activate
 
-PYTHONPATH=src python src/train/train_actu/train.py config/train_actu_config.py
+PYTHONPATH=src python -m train.train_actu.train config/train_actu_config.py
