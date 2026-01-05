@@ -24,8 +24,8 @@ def get_random_image(dataset):
     # get only id divisible by 100
     idx = idx - (idx % 100)
     print("index: ", idx)
-    image, actu, rotation = dataset[idx]
-    return image, actu, rotation
+    image, actu, rotation, particles = dataset[idx]
+    return image, actu, rotation, particles
 
 def get_predictions(image, trained_model, device):
     """Get predicted actuation and rotation from the model.
@@ -41,8 +41,8 @@ def get_predictions(image, trained_model, device):
     print(image.shape)
     with torch.no_grad():
         image_batch = image.unsqueeze(0).to(device)
-        pred_actu, pred_rot = trained_model(image_batch)
-    return pred_actu.squeeze(0).cpu(), pred_rot.squeeze(0).cpu()
+        pred_actu, pred_rot, pred_trans = trained_model(image_batch)
+    return pred_actu.squeeze(0).cpu(), pred_rot.squeeze(0).cpu(), pred_trans.squeeze(0).cpu()
 
 def build_transforms(img_size: int = 224):
     """Build transforms consistent with training datamodule."""
@@ -284,7 +284,16 @@ def reset_scene_with_mpm(scene, state):
     if scene._visualizer._viewer is not None:
         scene._visualizer._viewer.update(auto_refresh=True, force=True)
 
-
+def eval_particle_distance(particles_gt, particles_pred):
+    """Evaluate average distance between ground truth and predicted particles.
+    
+    Args:
+        particles_gt: Ground truth particle positions (N x 3 tensor)
+        particles_pred: Predicted particle positions (N x 3 tensor)"""
+    assert particles_gt.shape == particles_pred.shape, "Particle tensors must have the same shape"
+    distances = torch.norm(particles_gt - particles_pred, dim=1)
+    avg_distance = distances.mean().item()
+    return avg_distance
 
 if __name__ == "__main__":
 
@@ -292,7 +301,7 @@ if __name__ == "__main__":
     # data
     dataset = "lungs_bronchi"
     img_size = 224
-    checkpoint_path = "model_actu_rot.ckpt"  # Path to Lightning checkpoint (.ckpt)
+    checkpoint_path = "lightning_logs/genesis-tests/tabvk3j6/checkpoints/last.ckpt"  # Path to Lightning checkpoint (.ckpt)
     model_cls = "RGB_ActuationRotationPredictor" 
     backbone = "dinov2_vits14" 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -314,8 +323,8 @@ if __name__ == "__main__":
         device=device,
     )
 
-    criterion_actu = torch.nn.MSELoss()
-    criterion_rot = GeodesicLoss()
+    # criterion_actu = torch.nn.MSELoss()
+    # criterion_rot = GeodesicLoss()
 
     # Build transforms consistent with training datamodule
     transform = build_transforms(img_size=img_size)
@@ -478,8 +487,8 @@ if __name__ == "__main__":
     rotate = rotate_mpm_entity_with_matrix
 
     while True:
-        image, actu, rotation = get_random_image(dataset)
-        pred_actu, pred_rot_6d = get_predictions(image, trained_model, device)
+        image, actu, rotation, particles = get_random_image(dataset)
+        pred_actu, pred_rot_6d, pred_trans = get_predictions(image, trained_model, device)
         
         # Convert 6D rotation representation to 3x3 rotation matrix
         pred_rot_mat = rot6d_to_rotmat(pred_rot_6d.unsqueeze(0)).squeeze(0)
@@ -493,19 +502,31 @@ if __name__ == "__main__":
         print(f"Actuation GT: {actu.item():.4f}, Pred: {pred_actu.item():.4f}")
         print("Rotation GT:\n", rotation)
         print("Rotation Pred:\n", pred_rot_mat)
+        print("Translation Pred:\n", pred_trans)
 
         
         rotate(lungs, rotation, rotation_center)
         lungs.set_actuation(actu)
 
-        rotate(bronchi, pred_rot_mat, rotation_center)
-
+        rotate(bronchi, rotation, rotation_center)
+        particles_gt = lungs.get_particles_pos()
 
 
         rotate(lungs_1, pred_rot_mat, rotation_center)
+        scene.step()  # Step once to update MPM render fields after rotation
+        avg_distance = eval_particle_distance(particles_gt, lungs_1.get_particles_pos())
+        print(f"Average particle distance after rotation: {avg_distance:.6f}")
         lungs_1.set_actuation(pred_actu)
+        scene.step()  # Step once to update MPM render fields after actuation
+        avg_distance = eval_particle_distance(particles_gt, lungs_1.get_particles_pos())
+        print(f"Average particle distance after rotation and actuation: {avg_distance:.6f}")
+        translate_mpm(lungs_1, pred_trans)
+        scene.step()  # Step once to update MPM render fields after translation
+        avg_distance = eval_particle_distance(particles_gt, lungs_1.get_particles_pos())
+        print(f"Average particle distance after rotation, actuation, and translation: {avg_distance:.6f}")
 
         rotate(bronchi_1, pred_rot_mat, rotation_center)
+        translate_mpm(bronchi_1, pred_trans)
 
         # translate_mpm(bronchi_1, np.array([1.0, 0.0, 0.0]))
         # translate_mpm(lungs_1, np.array([1.0, 0.0, 0.0]))
