@@ -9,10 +9,155 @@ import os
 import numpy as np
 import torch
 from scipy.spatial.transform import Rotation as R
-
+from pynput import keyboard, mouse
 import genesis as gs
 from utils.rotation import generate_random_rotation_matrix
 from tqdm import trange
+
+
+class CameraController:
+    def __init__(self, camera, speed=0.05):
+        self.camera = camera
+        self.speed = speed
+        self.running = True
+        self.pressed_keys = set()
+        
+        # Initial state from camera
+        # If camera._pos is a tensor on GPU, move to CPU numpy
+        if hasattr(self.camera._pos, 'detach'):
+             self.pos = self.camera._pos.detach().cpu().numpy()
+             self.lookat = self.camera._lookat.detach().cpu().numpy()
+        else:
+             self.pos = np.array(self.camera._pos)
+             self.lookat = np.array(self.camera._lookat)
+             
+        if self.pos.ndim > 1: # Handle batched case just in case
+            self.pos = self.pos[0]
+            self.lookat = self.lookat[0]
+            
+        self.listener = keyboard.Listener(on_press=self.on_press, on_release=self.on_release)
+        self.listener.start()
+        
+        # Mouse control
+        self.mouse_listener = mouse.Listener(
+            on_move=self.on_move,
+            on_click=self.on_click,
+            on_scroll=self.on_scroll)
+        self.mouse_listener.start()
+        
+        self.is_dragging = False
+        self.last_mouse_pos = None
+        self.mouse_delta = np.zeros(2)
+        self.scroll_delta = 0
+        
+    def on_press(self, key):
+        if key == keyboard.Key.esc:
+            self.running = False
+        try:
+             self.pressed_keys.add(key.char)
+        except AttributeError:
+             self.pressed_keys.add(key)
+
+    def on_release(self, key):
+        try:
+             self.pressed_keys.discard(key.char)
+        except AttributeError:
+             self.pressed_keys.discard(key)
+             
+    def on_move(self, x, y):
+        if self.is_dragging and self.last_mouse_pos is not None:
+            self.mouse_delta[0] += x - self.last_mouse_pos[0]
+            self.mouse_delta[1] += y - self.last_mouse_pos[1]
+            self.last_mouse_pos = (x, y)
+
+    def on_click(self, x, y, button, pressed):
+        if button == mouse.Button.left:
+            self.is_dragging = pressed
+            if pressed:
+                self.last_mouse_pos = (x, y)
+            else:
+                self.last_mouse_pos = None
+
+    def on_scroll(self, x, y, dx, dy):
+        self.scroll_delta += dy
+
+    def update(self):
+        # Update pos (TGFH+RY keys)
+        # Coordinate system: Z is up usually in Genesis
+        
+        delta_pos = np.zeros(3)
+        if 't' in self.pressed_keys: delta_pos[0] += self.speed
+        if 'g' in self.pressed_keys: delta_pos[0] -= self.speed
+        if 'f' in self.pressed_keys: delta_pos[1] += self.speed
+        if 'h' in self.pressed_keys: delta_pos[1] -= self.speed
+        if 'r' in self.pressed_keys: delta_pos[2] += self.speed
+        if 'y' in self.pressed_keys: delta_pos[2] -= self.speed
+        
+        self.pos += delta_pos
+        
+        # Update lookat (Arrows + PageUp/Down)
+        delta_look = np.zeros(3)
+        if keyboard.Key.up in self.pressed_keys: delta_look[0] += self.speed
+        if keyboard.Key.down in self.pressed_keys: delta_look[0] -= self.speed
+        if keyboard.Key.left in self.pressed_keys: delta_look[1] += self.speed
+        if keyboard.Key.right in self.pressed_keys: delta_look[1] -= self.speed
+        if keyboard.Key.shift_l in self.pressed_keys: delta_look[2] += self.speed
+        if keyboard.Key.shift_r in self.pressed_keys: delta_look[2] -= self.speed
+        
+        self.lookat += delta_look
+        
+        # Mouse Controls processing
+        if np.abs(self.scroll_delta) > 0:
+            # Zoom: Move camera along view vector
+            view_vec = self.lookat - self.pos
+            # Don't get too close
+            if self.scroll_delta > 0 and np.linalg.norm(view_vec) < 0.1:
+                pass
+            else:
+                self.pos += view_vec * 0.1 * self.scroll_delta
+            self.scroll_delta = 0
+            
+        if np.linalg.norm(self.mouse_delta) > 0:
+            sensitivity = 0.005
+            dx, dy = self.mouse_delta
+            
+            # Orbit around lookat
+            # Current view vector relative to lookat
+            rel_pos = self.pos - self.lookat
+            
+            # Distance
+            r = np.linalg.norm(rel_pos)
+            
+            # Azimuth (around Z)
+            azimuth = np.arctan2(rel_pos[1], rel_pos[0])
+            # Elevation (angle with Z axis)
+            elevation = np.arccos(rel_pos[2] / r)
+            
+            # Update angles
+            # dx affects azimuth (left/right drag rotates around Z)
+            # dy affects elevation (up/down drag rotates up/down)
+            azimuth -= dx * sensitivity
+            elevation += dy * sensitivity
+            
+            # Clamp elevation to avoid flipping
+            epsilon = 0.01
+            elevation = np.clip(elevation, epsilon, np.pi - epsilon)
+            
+            # Recompute position
+            new_rel_pos = np.array([
+                r * np.sin(elevation) * np.cos(azimuth),
+                r * np.sin(elevation) * np.sin(azimuth),
+                r * np.cos(elevation)
+            ])
+            
+            self.pos = self.lookat + new_rel_pos
+            
+            # Reset delta
+            self.mouse_delta[:] = 0
+        
+        # Update camera
+        self.camera.set_pose(pos=self.pos, lookat=self.lookat)
+
 
 
 def rotate_entity_with_matrix(entity, rotation_matrix, center=None):
@@ -309,7 +454,7 @@ def main():
         ########################## camera ##########################
         cam = scene.add_camera(
             res=(1280, 960),
-            pos=(0, 0, 2.0),
+            pos=(0.6500001,  -0.4500001,   0.60000086),
             lookat=(0.0, 0.0, 0.3),
             fov=40,
             GUI=args.cam_GUI,
@@ -371,6 +516,7 @@ def main():
     # os.makedirs(f"datasets/{args.data}/actu", exist_ok=True)
     
             
+    last_printed_pos = None     
     for i in trange(args.num):
         # if i % 100 == 0:
         #     reset_scene_with_mpm(scene, initial_state)
@@ -379,68 +525,22 @@ def main():
         #     rotate_mpm_entity_with_matrix(bronchi, rotation_matrix, center=rotation_center)
 
         # Camera control interface
-        if args.cam_control and args.vis and scene._visualizer._viewer is not None:
-            viewer = scene._visualizer._viewer
+        if args.cam_control:
+            controller = CameraController(cam)
+            print("Interactive mode started. Use TGFH+RY to move camera position, Arrows+PgUp/Dn to move lookat point.")
+            print("Mouse/Touchpad: Click+Drag to Orbit, Scroll to Zoom. ESC to exit.")
             
-            # Check for keyboard inputs
-            if viewer.is_key_pressed('w'):
-                camera_pos[2] -= camera_step
-                cam.set_pose(pos=camera_pos, lookat=camera_lookat)
-            if viewer.is_key_pressed('s'):
-                camera_pos[2] += camera_step
-                cam.set_pose(pos=camera_pos, lookat=camera_lookat)
-            if viewer.is_key_pressed('a'):
-                camera_pos[0] -= camera_step
-                cam.set_pose(pos=camera_pos, lookat=camera_lookat)
-            if viewer.is_key_pressed('d'):
-                camera_pos[0] += camera_step
-                cam.set_pose(pos=camera_pos, lookat=camera_lookat)
-            if viewer.is_key_pressed('q'):
-                camera_pos[1] -= camera_step
-                cam.set_pose(pos=camera_pos, lookat=camera_lookat)
-            if viewer.is_key_pressed('e'):
-                camera_pos[1] += camera_step
-                cam.set_pose(pos=camera_pos, lookat=camera_lookat)
-            
-            # Lookat controls
-            if viewer.is_key_pressed('i'):
-                camera_lookat[2] -= camera_step
-                cam.set_pose(pos=camera_pos, lookat=camera_lookat)
-            if viewer.is_key_pressed('k'):
-                camera_lookat[2] += camera_step
-                cam.set_pose(pos=camera_pos, lookat=camera_lookat)
-            if viewer.is_key_pressed('j'):
-                camera_lookat[0] -= camera_step
-                cam.set_pose(pos=camera_pos, lookat=camera_lookat)
-            if viewer.is_key_pressed('l'):
-                camera_lookat[0] += camera_step
-                cam.set_pose(pos=camera_pos, lookat=camera_lookat)
-            if viewer.is_key_pressed('u'):
-                camera_lookat[1] -= camera_step
-                cam.set_pose(pos=camera_pos, lookat=camera_lookat)
-            if viewer.is_key_pressed('o'):
-                camera_lookat[1] += camera_step
-                cam.set_pose(pos=camera_pos, lookat=camera_lookat)
-            
-            # Reset camera
-            if viewer.is_key_pressed('r'):
-                camera_pos = np.array([0.0, 0.0, 2.0])
-                camera_lookat = np.array([0.0, 0.0, 0.3])
-                cam.set_pose(pos=camera_pos, lookat=camera_lookat)
-                print("Camera reset to initial position")
-            
-            # Print current camera state
-            if viewer.is_key_pressed('p'):
-                print(f"Camera Position: {camera_pos}")
-                print(f"Camera Lookat: {camera_lookat}")
-            
-            # Adjust step size
-            if viewer.is_key_pressed('=') or viewer.is_key_pressed('+'):
-                camera_step *= 1.1
-                print(f"Camera step size: {camera_step:.4f}")
-            if viewer.is_key_pressed('-') or viewer.is_key_pressed('_'):
-                camera_step *= 0.9
-                print(f"Camera step size: {camera_step:.4f}")
+            last_pos = None
+            while controller.running:
+                controller.update()
+                cam.render()
+                current_pos = controller.pos
+                if last_pos is None or not np.allclose(current_pos, last_pos, atol=1e-4):
+                    print(f"Camera pos: {current_pos}")
+                    last_pos = current_pos.copy()
+            controller.listener.stop()
+            controller.mouse_listener.stop()
+
 
         actu = np.array([0.5 * (0.5 + np.sin(0.01 * np.pi * i))])
         lungs.set_actuation(actu)
